@@ -1,25 +1,25 @@
 {
   "name": "HaleHound for ESP32-DIV",
-  "version": "2.5.0",
+  "version": "3.5.5",
   "home_assistant_domain": "",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32",
       "parts": [
-        { "path": "../firmware/halehound/bootloader.bin", "offset": 4096 },
-        { "path": "../firmware/halehound/partitions.bin", "offset": 32768 },
-        { "path": "../firmware/halehound/boot_app0.bin", "offset": 57344 },
-        { "path": "../firmware/halehound/HaleHound.bin", "offset": 65536 }
+        {
+          "path": "https://raw.githubusercontent.com/JesseCHale/HaleHound-CYD/main/flash_package/HaleHound-CYD-FULL.bin",
+          "offset": 0
+        }
       ]
     },
     {
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "../firmware/halehound/bootloader.bin", "offset": 0 },
-        { "path": "../firmware/halehound/partitions.bin", "offset": 32768 },
-        { "path": "../firmware/halehound/boot_app0.bin", "offset": 57344 },
-        { "path": "../firmware/halehound/HaleHound.bin", "offset": 65536 }
+        {
+          "path": "https://raw.githubusercontent.com/JesseCHale/HaleHound-CYD/main/flash_package/HaleHound-CYD-FULL.bin",
+          "offset": 0
+        }
       ]
     }
   ]
