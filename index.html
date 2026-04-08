@@ -26,151 +26,123 @@
       border-bottom: 1px solid #1a1a2e;
     }
 
-    header h1 {
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: #00ff88;
-      letter-spacing: -0.5px;
-    }
-
+    header h1 { font-size: 1.8rem; font-weight: 700; color: #00ff88; letter-spacing: -0.5px; }
     header h1 span { color: #555; font-weight: 400; }
+    header p { color: #666; margin-top: 0.4rem; font-size: 0.9rem; }
 
-    header p {
-      color: #666;
-      margin-top: 0.4rem;
-      font-size: 0.9rem;
-    }
+    .container { max-width: 720px; width: 100%; padding: 1.5rem 1rem; }
 
-    .container {
-      max-width: 640px;
-      width: 100%;
-      padding: 1.5rem 1rem;
-    }
-
+    /* ---- Auto-detect badge ---- */
     .auto-badge {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.6rem 1rem;
-      margin-bottom: 1.5rem;
-      border: 1px solid #1a2e1f;
-      border-radius: 10px;
-      background: #0d1f15;
-      font-size: 0.82rem;
-      color: #66cc88;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.6rem 1rem; margin-bottom: 1.5rem;
+      border: 1px solid #1a2e1f; border-radius: 10px; background: #0d1f15;
+      font-size: 0.82rem; color: #66cc88;
     }
-
     .auto-badge .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #00ff88;
+      width: 8px; height: 8px; border-radius: 50%; background: #00ff88;
       animation: pulse 2s ease-in-out infinite;
     }
-
     @keyframes pulse {
       0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
       50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(0,255,136,0); }
     }
 
+    /* ---- Section headers ---- */
+    .section-title {
+      font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-title .icon { color: #00ff88; font-size: 1.1rem; }
+
+    /* ---- Firmware cards ---- */
     .fw-card {
-      border: 1px solid #1a1a2e;
-      border-radius: 12px;
-      background: #111118;
-      padding: 1.25rem;
-      margin-bottom: 0.75rem;
-      transition: border-color 0.2s;
+      border: 1px solid #1a1a2e; border-radius: 12px; background: #111118;
+      padding: 1.25rem; margin-bottom: 0.75rem; transition: border-color 0.2s;
     }
-
     .fw-card:hover { border-color: #2a2a3e; }
-
     .fw-card h3 { font-size: 1.05rem; color: #fff; margin-bottom: 0.15rem; }
-
     .fw-card .version { font-size: 0.8rem; color: #00ff88; font-weight: 600; margin-bottom: 0.5rem; }
-
     .fw-card .chip-support {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      font-size: 0.7rem;
-      color: #888;
-      background: #0d0d18;
-      padding: 0.2rem 0.6rem;
-      border-radius: 20px;
-      margin-bottom: 0.6rem;
-      border: 1px solid #1a1a2e;
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      font-size: 0.7rem; color: #888; background: #0d0d18;
+      padding: 0.2rem 0.6rem; border-radius: 20px; margin-bottom: 0.6rem; border: 1px solid #1a1a2e;
     }
-
     .fw-card .chip-support .chip { color: #66aaff; font-weight: 600; }
-
     .fw-card p { font-size: 0.85rem; color: #888; line-height: 1.5; margin-bottom: 1rem; }
-
     .fw-card .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem; }
-
-    .tag {
-      font-size: 0.7rem;
-      padding: 0.2rem 0.55rem;
-      border-radius: 20px;
-      background: #1a1a2e;
-      color: #aaa;
-      font-weight: 500;
-    }
-
+    .tag { font-size: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 20px; background: #1a1a2e; color: #aaa; font-weight: 500; }
     .fw-card .actions { display: flex; align-items: center; gap: 0.75rem; }
 
     esp-web-install-button { display: inline-block; }
-
-    esp-web-install-button button,
-    .flash-btn {
-      background: #00ff88;
-      color: #000;
-      border: none;
-      padding: 0.6rem 1.4rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s;
-      letter-spacing: 0.3px;
+    esp-web-install-button button, .flash-btn {
+      background: #00ff88; color: #000; border: none; padding: 0.6rem 1.4rem;
+      border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; letter-spacing: 0.3px;
     }
-
-    esp-web-install-button button:hover,
-    .flash-btn:hover { background: #00cc6a; transform: translateY(-1px); }
-
+    esp-web-install-button button:hover, .flash-btn:hover { background: #00cc6a; transform: translateY(-1px); }
     .link-btn { font-size: 0.8rem; color: #555; text-decoration: none; transition: color 0.15s; }
     .link-btn:hover { color: #00ff88; }
 
-    .instructions {
-      margin-top: 1.5rem;
-      padding: 1.25rem;
-      border: 1px solid #1a1a2e;
-      border-radius: 12px;
-      background: #111118;
+    /* ---- Board ID section ---- */
+    .board-id {
+      margin-top: 1.5rem; border: 1px solid #1a1a2e; border-radius: 12px;
+      background: #111118; padding: 1.25rem; overflow: hidden;
     }
+    .board-id-header {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none;
+    }
+    .board-id-header h3 { font-size: 0.95rem; color: #fff; }
+    .board-id-toggle {
+      font-size: 0.75rem; color: #00ff88; background: #0d1f15;
+      padding: 0.3rem 0.7rem; border-radius: 6px; border: 1px solid #1a2e1f;
+      transition: background 0.15s;
+    }
+    .board-id-header:hover .board-id-toggle { background: #143d24; }
 
+    .board-id-content { display: none; margin-top: 1rem; }
+    .board-id-content.open { display: block; }
+
+    .board-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+    @media (max-width: 600px) { .board-grid { grid-template-columns: 1fr; } }
+
+    .board-panel {
+      border: 1px solid #1a1a2e; border-radius: 10px; background: #0d0d14;
+      padding: 1rem; text-align: center;
+    }
+    .board-panel h4 { font-size: 0.9rem; color: #fff; margin-bottom: 0.15rem; }
+    .board-panel .board-chip { font-size: 0.7rem; color: #66aaff; font-weight: 600; margin-bottom: 0.75rem; }
+    .board-panel svg { width: 100%; max-width: 260px; height: auto; margin: 0 auto 0.75rem; display: block; }
+
+    .board-panel .board-traits {
+      text-align: left; font-size: 0.75rem; color: #888; line-height: 1.7;
+      padding-left: 0.25rem;
+    }
+    .board-panel .board-traits li { list-style: none; }
+    .board-panel .board-traits li::before { content: "→ "; color: #00ff88; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; justify-content: center; }
+    .legend-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: #888; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+    /* ---- Instructions ---- */
+    .instructions {
+      margin-top: 1.5rem; padding: 1.25rem;
+      border: 1px solid #1a1a2e; border-radius: 12px; background: #111118;
+    }
     .instructions h3 { font-size: 0.95rem; color: #fff; margin-bottom: 0.75rem; }
     .instructions ol { padding-left: 1.25rem; color: #888; font-size: 0.85rem; line-height: 1.8; }
     .instructions ol li::marker { color: #00ff88; }
-
     .instructions .note {
-      margin-top: 0.75rem;
-      padding: 0.6rem 0.75rem;
-      background: #1a1510;
-      border-left: 3px solid #ff8800;
-      border-radius: 0 6px 6px 0;
-      font-size: 0.8rem;
-      color: #cc9944;
+      margin-top: 0.75rem; padding: 0.6rem 0.75rem; background: #1a1510;
+      border-left: 3px solid #ff8800; border-radius: 0 6px 6px 0;
+      font-size: 0.8rem; color: #cc9944;
     }
-
     .instructions .detect-note {
-      margin-top: 0.75rem;
-      padding: 0.6rem 0.75rem;
-      background: #0d1f15;
-      border-left: 3px solid #00ff88;
-      border-radius: 0 6px 6px 0;
-      font-size: 0.8rem;
-      color: #66cc88;
+      margin-top: 0.75rem; padding: 0.6rem 0.75rem; background: #0d1f15;
+      border-left: 3px solid #00ff88; border-radius: 0 6px 6px 0;
+      font-size: 0.8rem; color: #66cc88;
     }
 
     footer { margin-top: auto; padding: 1.5rem; text-align: center; font-size: 0.75rem; color: #333; }
@@ -197,8 +169,11 @@
 
     <div class="auto-badge" id="autoBadge">
       <span class="dot"></span>
-      Auto-detect &mdash; plug in your DIV and hit Flash. We detect v1 (ESP32) or v2 (ESP32-S3) automatically.
+      Auto-detect &mdash; plug in your DIV and hit Flash. We detect v1&nbsp;(ESP32) or v2&nbsp;(ESP32-S3) automatically.
     </div>
+
+    <!-- ==================== Firmware ==================== -->
+    <div class="section-title"><span class="icon">&#9889;</span> Choose Firmware</div>
 
     <div class="fw-card">
       <h3>CiferTech Original</h3>
@@ -212,12 +187,9 @@
         V2 adds touch calibration and serial monitor.
       </p>
       <div class="tags">
-        <span class="tag">Wi-Fi</span>
-        <span class="tag">BLE</span>
-        <span class="tag">Deauth</span>
-        <span class="tag">Beacon Spam</span>
-        <span class="tag">Packet Monitor</span>
-        <span class="tag">SD Logging</span>
+        <span class="tag">Wi-Fi</span><span class="tag">BLE</span>
+        <span class="tag">Deauth</span><span class="tag">Beacon Spam</span>
+        <span class="tag">Packet Monitor</span><span class="tag">SD Logging</span>
       </div>
       <div class="actions">
         <esp-web-install-button manifest="manifests/cifertech.json">
@@ -229,22 +201,19 @@
 
     <div class="fw-card">
       <h3>HaleHound</h3>
-      <div class="version">v2.5.0</div>
+      <div class="version">v3.5.5</div>
       <div class="chip-support">
         Supports: <span class="chip">ESP32 (DIV v1)</span> &amp; <span class="chip">ESP32-S3 (DIV v2)</span>
       </div>
       <p>
         Ground-up rewrite with 30+ attack modules. EAPOL/PMKID capture,
         Karma AP, NRF24 sniffer, MouseJack, AirTag suite, BLE Predator
-        honeypot, and jam detection. V2 unlocks native USB and extra GPIO.
+        honeypot, jam detection, and Airoha BLE exploit. Single FULL.bin flash.
       </p>
       <div class="tags">
-        <span class="tag">Wi-Fi</span>
-        <span class="tag">BLE</span>
-        <span class="tag">NRF24</span>
-        <span class="tag">Sub-GHz</span>
-        <span class="tag">PMKID</span>
-        <span class="tag">Karma</span>
+        <span class="tag">Wi-Fi</span><span class="tag">BLE</span>
+        <span class="tag">NRF24</span><span class="tag">Sub-GHz</span>
+        <span class="tag">PMKID</span><span class="tag">Karma</span>
         <span class="tag">MouseJack</span>
       </div>
       <div class="actions">
@@ -255,6 +224,195 @@
       </div>
     </div>
 
+    <!-- ==================== Board ID Diagrams ==================== -->
+    <div class="board-id">
+      <div class="board-id-header" onclick="toggleBoardId()">
+        <h3>Which board do I have?</h3>
+        <span class="board-id-toggle" id="boardToggle">Show diagrams</span>
+      </div>
+      <div class="board-id-content" id="boardContent">
+        <p style="font-size:0.82rem; color:#888; margin-bottom:0.75rem;">
+          Don't worry about picking wrong &mdash; the flasher auto-detects your chip. But here's how to tell them apart:
+        </p>
+
+        <div class="board-grid">
+
+          <!-- ===== DIV v1 Diagram ===== -->
+          <div class="board-panel">
+            <h4>ESP32-DIV v1</h4>
+            <div class="board-chip">ESP32 &middot; Micro USB</div>
+
+            <svg viewBox="0 0 220 340" xmlns="http://www.w3.org/2000/svg">
+              <!-- PCB body -->
+              <rect x="20" y="10" width="180" height="320" rx="8" fill="#1a1a2e" stroke="#2a2a3e" stroke-width="1.5"/>
+
+              <!-- TFT Display -->
+              <rect x="35" y="25" width="150" height="112" rx="4" fill="#0d0d18" stroke="#333" stroke-width="1"/>
+              <text x="110" y="80" text-anchor="middle" fill="#444" font-size="10" font-family="sans-serif">ILI9341 2.8" TFT</text>
+              <text x="110" y="94" text-anchor="middle" fill="#333" font-size="8" font-family="sans-serif">Touch Display</text>
+
+              <!-- ESP32 DevKit module (visible at bottom of sandwich) -->
+              <rect x="40" y="150" width="140" height="70" rx="4" fill="#1f2937" stroke="#4a5568" stroke-width="1"/>
+              <text x="110" y="178" text-anchor="middle" fill="#66aaff" font-size="9" font-weight="bold" font-family="sans-serif">ESP32 DevKit</text>
+              <text x="110" y="192" text-anchor="middle" fill="#555" font-size="7" font-family="sans-serif">CP2102 onboard</text>
+
+              <!-- BOOT button -->
+              <rect x="48" y="158" width="24" height="12" rx="3" fill="#ff4444" stroke="#cc3333" stroke-width="1"/>
+              <text x="60" y="166" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold" font-family="sans-serif">BOOT</text>
+              <!-- BOOT callout -->
+              <line x1="60" y1="155" x2="60" y2="143" stroke="#ff4444" stroke-width="1" stroke-dasharray="2,2"/>
+              <text x="60" y="142" text-anchor="middle" fill="#ff6666" font-size="7" font-weight="bold" font-family="sans-serif">BOOT</text>
+
+              <!-- EN/RST button -->
+              <rect x="148" y="158" width="24" height="12" rx="3" fill="#ffaa00" stroke="#cc8800" stroke-width="1"/>
+              <text x="160" y="166" text-anchor="middle" fill="#000" font-size="5.5" font-weight="bold" font-family="sans-serif">EN/RST</text>
+
+              <!-- Pin headers (sandwich connection) -->
+              <g fill="#555" stroke="#666" stroke-width="0.5">
+                <rect x="28" y="155" width="6" height="60" rx="1"/>
+                <rect x="186" y="155" width="6" height="60" rx="1"/>
+              </g>
+              <text x="20" y="188" text-anchor="end" fill="#444" font-size="6" font-family="sans-serif" transform="rotate(-90,20,188)">HEADERS</text>
+
+              <!-- Micro USB port -->
+              <rect x="85" y="222" width="50" height="14" rx="3" fill="#00ff88" stroke="#00cc6a" stroke-width="1.5"/>
+              <text x="110" y="232" text-anchor="middle" fill="#000" font-size="7" font-weight="bold" font-family="sans-serif">MICRO USB</text>
+              <!-- USB callout -->
+              <line x1="110" y1="238" x2="110" y2="252" stroke="#00ff88" stroke-width="1" stroke-dasharray="2,2"/>
+              <text x="110" y="261" text-anchor="middle" fill="#00ff88" font-size="7" font-weight="bold" font-family="sans-serif">DATA + POWER</text>
+
+              <!-- SD Card slot -->
+              <rect x="140" y="255" width="50" height="25" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+              <text x="165" y="270" text-anchor="middle" fill="#888" font-size="7" font-family="sans-serif">SD Card</text>
+
+              <!-- Nav buttons (side) -->
+              <g>
+                <circle cx="50" cy="270" r="7" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+                <circle cx="50" cy="290" r="7" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+                <circle cx="50" cy="310" r="7" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+                <text x="50" y="272" text-anchor="middle" fill="#666" font-size="6" font-family="sans-serif">&#9650;</text>
+                <text x="50" y="293" text-anchor="middle" fill="#666" font-size="7" font-family="sans-serif">OK</text>
+                <text x="50" y="313" text-anchor="middle" fill="#666" font-size="6" font-family="sans-serif">&#9660;</text>
+              </g>
+
+              <!-- Antenna connector -->
+              <circle cx="175" cy="300" r="10" fill="none" stroke="#ffaa00" stroke-width="1.5"/>
+              <circle cx="175" cy="300" r="3" fill="#ffaa00"/>
+              <text x="175" y="318" text-anchor="middle" fill="#888" font-size="6" font-family="sans-serif">Antenna</text>
+            </svg>
+
+            <ul class="board-traits">
+              <li>Sandwich-style PCB (main + shield)</li>
+              <li><strong style="color:#ff6666">BOOT btn</strong> on ESP32 DevKit module</li>
+              <li><strong style="color:#00ff88">Micro USB</strong> on DevKit (bottom board)</li>
+              <li>Pin headers connect boards</li>
+              <li>3x NRF24 + CC1101 on shield</li>
+            </ul>
+          </div>
+
+          <!-- ===== DIV v2 Diagram ===== -->
+          <div class="board-panel">
+            <h4>ESP32-DIV v2</h4>
+            <div class="board-chip">ESP32-S3 &middot; USB-C</div>
+
+            <svg viewBox="0 0 220 340" xmlns="http://www.w3.org/2000/svg">
+              <!-- PCB body (sleeker) -->
+              <rect x="20" y="10" width="180" height="320" rx="8" fill="#1a1a2e" stroke="#2a2a3e" stroke-width="1.5"/>
+
+              <!-- TFT Display -->
+              <rect x="30" y="22" width="160" height="120" rx="4" fill="#0d0d18" stroke="#333" stroke-width="1"/>
+              <text x="110" y="80" text-anchor="middle" fill="#444" font-size="10" font-family="sans-serif">ILI9341 2.8" TFT</text>
+              <text x="110" y="94" text-anchor="middle" fill="#333" font-size="8" font-family="sans-serif">Touch Display</text>
+
+              <!-- ESP32-S3 chip (integrated) -->
+              <rect x="55" y="155" width="110" height="35" rx="4" fill="#1f2937" stroke="#66aaff" stroke-width="1"/>
+              <text x="110" y="174" text-anchor="middle" fill="#66aaff" font-size="9" font-weight="bold" font-family="sans-serif">ESP32-S3</text>
+              <text x="110" y="185" text-anchor="middle" fill="#555" font-size="7" font-family="sans-serif">Integrated on PCB</text>
+
+              <!-- CP2102 -->
+              <rect x="55" y="198" width="50" height="18" rx="3" fill="#1f2937" stroke="#444" stroke-width="0.75"/>
+              <text x="80" y="210" text-anchor="middle" fill="#666" font-size="6.5" font-family="sans-serif">CP2102</text>
+
+              <!-- IP5306 -->
+              <rect x="115" y="198" width="50" height="18" rx="3" fill="#1f2937" stroke="#444" stroke-width="0.75"/>
+              <text x="140" y="210" text-anchor="middle" fill="#666" font-size="6.5" font-family="sans-serif">IP5306</text>
+
+              <!-- BOOT button -->
+              <rect x="38" y="230" width="28" height="14" rx="3" fill="#ff4444" stroke="#cc3333" stroke-width="1"/>
+              <text x="52" y="240" text-anchor="middle" fill="#fff" font-size="6.5" font-weight="bold" font-family="sans-serif">BOOT</text>
+              <!-- BOOT callout arrow -->
+              <line x1="30" y1="237" x2="36" y2="237" stroke="#ff4444" stroke-width="1.5"/>
+              <polygon points="25,237 32,233 32,241" fill="#ff4444"/>
+              <text x="18" y="232" text-anchor="end" fill="#ff6666" font-size="7" font-weight="bold" font-family="sans-serif" transform="rotate(-90,18,240)">BOOT</text>
+
+              <!-- RST button -->
+              <rect x="154" y="230" width="28" height="14" rx="3" fill="#ffaa00" stroke="#cc8800" stroke-width="1"/>
+              <text x="168" y="240" text-anchor="middle" fill="#000" font-size="6" font-weight="bold" font-family="sans-serif">RST</text>
+
+              <!-- USB-C port -->
+              <rect x="80" y="265" width="60" height="16" rx="6" fill="#00ff88" stroke="#00cc6a" stroke-width="1.5"/>
+              <text x="110" y="276" text-anchor="middle" fill="#000" font-size="7.5" font-weight="bold" font-family="sans-serif">USB-C</text>
+              <!-- USB callout -->
+              <line x1="110" y1="283" x2="110" y2="295" stroke="#00ff88" stroke-width="1" stroke-dasharray="2,2"/>
+              <text x="110" y="304" text-anchor="middle" fill="#00ff88" font-size="7" font-weight="bold" font-family="sans-serif">DATA + POWER</text>
+
+              <!-- Pogo pin contacts (instead of headers) -->
+              <g fill="#aaa" stroke="#888" stroke-width="0.5">
+                <circle cx="35" cy="155" r="2.5"/>
+                <circle cx="35" cy="165" r="2.5"/>
+                <circle cx="35" cy="175" r="2.5"/>
+                <circle cx="35" cy="185" r="2.5"/>
+                <circle cx="185" cy="155" r="2.5"/>
+                <circle cx="185" cy="165" r="2.5"/>
+                <circle cx="185" cy="175" r="2.5"/>
+                <circle cx="185" cy="185" r="2.5"/>
+              </g>
+              <text x="35" y="148" text-anchor="middle" fill="#666" font-size="5.5" font-family="sans-serif">POGO</text>
+              <text x="185" y="148" text-anchor="middle" fill="#666" font-size="5.5" font-family="sans-serif">POGO</text>
+
+              <!-- SD Card slot -->
+              <rect x="140" y="308" width="50" height="18" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+              <text x="165" y="320" text-anchor="middle" fill="#888" font-size="7" font-family="sans-serif">SD Card</text>
+
+              <!-- Soft tactile buttons -->
+              <g>
+                <rect x="35" y="290" width="14" height="14" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+                <rect x="55" y="290" width="14" height="14" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+                <rect x="35" y="310" width="14" height="14" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+                <rect x="55" y="310" width="14" height="14" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
+                <text x="42" y="299" text-anchor="middle" fill="#555" font-size="5" font-family="sans-serif">&#9650;</text>
+                <text x="62" y="299" text-anchor="middle" fill="#555" font-size="5" font-family="sans-serif">&#9654;</text>
+                <text x="42" y="319" text-anchor="middle" fill="#555" font-size="5" font-family="sans-serif">&#9660;</text>
+                <text x="62" y="319" text-anchor="middle" fill="#555" font-size="5" font-family="sans-serif">OK</text>
+              </g>
+
+              <!-- Battery connector -->
+              <rect x="100" y="315" width="30" height="10" rx="2" fill="#2d2d44" stroke="#ffaa00" stroke-width="0.75"/>
+              <text x="115" y="323" text-anchor="middle" fill="#cc8800" font-size="5" font-family="sans-serif">BAT</text>
+            </svg>
+
+            <ul class="board-traits">
+              <li>Single integrated PCB + shield via pogo pins</li>
+              <li><strong style="color:#ff6666">BOOT btn</strong> on left edge of main board</li>
+              <li><strong style="color:#00ff88">USB-C</strong> port on bottom edge</li>
+              <li>IP5306 battery management built-in</li>
+              <li>Soft tactile nav buttons</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff4444"></div> BOOT button (hold to enter flash mode)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#00ff88"></div> USB port (connect here to flash)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffaa00"></div> RST / Antenna / Power</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== Instructions ==================== -->
     <div class="instructions">
       <h3>How to Flash</h3>
       <ol>
@@ -268,8 +426,8 @@
         picks the correct build for DIV v1 (ESP32) or DIV v2 (ESP32-S3). No manual selection needed.
       </div>
       <div class="note">
-        If the device isn't detected, hold the <strong>BOOT</strong> button while
-        plugging in USB, then try again.
+        If the device isn't detected, hold the <strong style="color:#ff6666">BOOT</strong> button while
+        plugging in USB, then try again. See diagrams above for button location.
       </div>
     </div>
 
@@ -277,7 +435,7 @@
 
   <footer>
     Built for the ESP32-DIV community &mdash;
-    <a href="https://github.com/cifertech/ESP32-DIV">CiferTech</a> \u00B7
+    <a href="https://github.com/cifertech/ESP32-DIV">CiferTech</a> &middot;
     <a href="https://github.com/JesseCHale/HaleHound-CYD">HaleHound</a>
   </footer>
 
@@ -285,6 +443,13 @@
     if (!("serial" in navigator)) {
       document.getElementById("unsupported").classList.add("show");
       document.getElementById("autoBadge").style.display = "none";
+    }
+
+    function toggleBoardId() {
+      const content = document.getElementById("boardContent");
+      const toggle = document.getElementById("boardToggle");
+      const isOpen = content.classList.toggle("open");
+      toggle.textContent = isOpen ? "Hide diagrams" : "Show diagrams";
     }
   </script>
 
