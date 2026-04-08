@@ -8,15 +8,15 @@
       "chipFamily": "ESP32",
       "parts": [
         {
-          "path": "https://github.com/cifertech/ESP32-DIV/releases/download/v1.5.0/ESP32-DIV.ino.bootloader.bin",
+          "path": "https://raw.githubusercontent.com/cifertech/ESP32-DIV/main/Flash%20File/esp32s3/ESP32-DIV.ino.bootloader.bin",
           "offset": 4096
         },
         {
-          "path": "https://github.com/cifertech/ESP32-DIV/releases/download/v1.5.0/ESP32-DIV.ino.partitions.bin",
+          "path": "https://raw.githubusercontent.com/cifertech/ESP32-DIV/main/Flash%20File/esp32s3/ESP32-DIV.ino.partitions.bin",
           "offset": 32768
         },
         {
-          "path": "https://github.com/cifertech/ESP32-DIV/releases/download/v1.5.0/ESP32-DIV-1.5.0.bin",
+          "path": "https://raw.githubusercontent.com/cifertech/ESP32-DIV/main/Pre-compiled%20Bin/ESP32-DIV-1.5.0.bin",
           "offset": 65536
         }
       ]
@@ -25,15 +25,15 @@
       "chipFamily": "ESP32-S3",
       "parts": [
         {
-          "path": "https://github.com/cifertech/ESP32-DIV/releases/download/v1.5.0/ESP32-DIV.ino.bootloader.bin",
+          "path": "https://raw.githubusercontent.com/cifertech/ESP32-DIV/main/Flash%20File/esp32s3/ESP32-DIV.ino.bootloader.bin",
           "offset": 0
         },
         {
-          "path": "https://github.com/cifertech/ESP32-DIV/releases/download/v1.5.0/ESP32-DIV.ino.partitions.bin",
+          "path": "https://raw.githubusercontent.com/cifertech/ESP32-DIV/main/Flash%20File/esp32s3/ESP32-DIV.ino.partitions.bin",
           "offset": 32768
         },
         {
-          "path": "https://github.com/cifertech/ESP32-DIV/releases/download/v1.5.0/ESP32-DIV-1.5.0.bin",
+          "path": "https://raw.githubusercontent.com/cifertech/ESP32-DIV/main/Pre-compiled%20Bin/ESP32-DIV-1.5.0.bin",
           "offset": 65536
         }
       ]
