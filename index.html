@@ -6,70 +6,287 @@
   <title>ESP32-DIV Web Flasher</title>
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;align-items:center}
-    header{width:100%;padding:2rem 1rem 1.5rem;text-align:center;background:linear-gradient(180deg,#111118 0%,#0a0a0f 100%);border-bottom:1px solid #1a1a2e}
-    header h1{font-size:1.8rem;font-weight:700;color:#00ff88;letter-spacing:-0.5px}
-    header h1 span{color:#555;font-weight:400}
-    header p{color:#666;margin-top:0.4rem;font-size:0.9rem}
-    .container{max-width:640px;width:100%;padding:1.5rem 1rem}
-    .board-select{display:flex;gap:0.5rem;margin-bottom:1.5rem}
-    .board-btn{flex:1;padding:0.75rem;border:2px solid #1a1a2e;border-radius:10px;background:#111118;color:#888;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s;text-align:center}
-    .board-btn:hover{border-color:#333;color:#bbb}
-    .board-btn.active{border-color:#00ff88;color:#00ff88;background:#0d1f15}
-    .board-btn small{display:block;font-weight:400;font-size:0.75rem;margin-top:0.25rem;opacity:0.6}
-    .fw-card{border:1px solid #1a1a2e;border-radius:12px;background:#111118;padding:1.25rem;margin-bottom:0.75rem;transition:border-color 0.2s}
-    .fw-card:hover{border-color:#2a2a3e}
-    .fw-card h3{font-size:1.05rem;color:#fff;margin-bottom:0.15rem}
-    .fw-card .version{font-size:0.8rem;color:#00ff88;font-weight:600;margin-bottom:0.5rem}
-    .fw-card p{font-size:0.85rem;color:#888;line-height:1.5;margin-bottom:1rem}
-    .fw-card .tags{display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:1rem}
-    .tag{font-size:0.7rem;padding:0.2rem 0.55rem;border-radius:20px;background:#1a1a2e;color:#aaa;font-weight:500}
-    .fw-card .actions{display:flex;align-items:center;gap:0.75rem}
-    esp-web-install-button{display:inline-block}
-    .flash-btn{background:#00ff88;color:#000;border:none;padding:0.6rem 1.4rem;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;transition:all 0.15s;letter-spacing:0.3px}
-    .flash-btn:hover{background:#00cc6a;transform:translateY(-1px)}
-    .link-btn{font-size:0.8rem;color:#555;text-decoration:none;transition:color 0.15s}
-    .link-btn:hover{color:#00ff88}
-    .instructions{margin-top:1.5rem;padding:1.25rem;border:1px solid #1a1a2e;border-radius:12px;background:#111118}
-    .instructions h3{font-size:0.95rem;color:#fff;margin-bottom:0.75rem}
-    .instructions ol{padding-left:1.25rem;color:#888;font-size:0.85rem;line-height:1.8}
-    .instructions ol li::marker{color:#00ff88}
-    .instructions .note{margin-top:0.75rem;padding:0.6rem 0.75rem;background:#1a1510;border-left:3px solid #ff8800;border-radius:0 6px 6px 0;font-size:0.8rem;color:#cc9944}
-    footer{margin-top:auto;padding:1.5rem;text-align:center;font-size:0.75rem;color:#333}
-    footer a{color:#444;text-decoration:none}
-    footer a:hover{color:#00ff88}
-    .fw-section{display:none}
-    .fw-section.active{display:block}
-    .unsupported{display:none;text-align:center;padding:2rem;color:#ff4444;font-size:0.9rem}
-    .unsupported.show{display:block}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      padding: 2rem 1rem 1.5rem;
+      text-align: center;
+      background: linear-gradient(180deg, #111118 0%, #0a0a0f 100%);
+      border-bottom: 1px solid #1a1a2e;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #00ff88;
+      letter-spacing: -0.5px;
+    }
+
+    header h1 span { color: #555; font-weight: 400; }
+
+    header p {
+      color: #666;
+      margin-top: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    .container {
+      max-width: 640px;
+      width: 100%;
+      padding: 1.5rem 1rem;
+    }
+
+    .auto-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid #1a2e1f;
+      border-radius: 10px;
+      background: #0d1f15;
+      font-size: 0.82rem;
+      color: #66cc88;
+    }
+
+    .auto-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00ff88;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(0,255,136,0); }
+    }
+
+    .fw-card {
+      border: 1px solid #1a1a2e;
+      border-radius: 12px;
+      background: #111118;
+      padding: 1.25rem;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.2s;
+    }
+
+    .fw-card:hover { border-color: #2a2a3e; }
+
+    .fw-card h3 { font-size: 1.05rem; color: #fff; margin-bottom: 0.15rem; }
+
+    .fw-card .version { font-size: 0.8rem; color: #00ff88; font-weight: 600; margin-bottom: 0.5rem; }
+
+    .fw-card .chip-support {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.7rem;
+      color: #888;
+      background: #0d0d18;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      margin-bottom: 0.6rem;
+      border: 1px solid #1a1a2e;
+    }
+
+    .fw-card .chip-support .chip { color: #66aaff; font-weight: 600; }
+
+    .fw-card p { font-size: 0.85rem; color: #888; line-height: 1.5; margin-bottom: 1rem; }
+
+    .fw-card .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem; }
+
+    .tag {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
+      background: #1a1a2e;
+      color: #aaa;
+      font-weight: 500;
+    }
+
+    .fw-card .actions { display: flex; align-items: center; gap: 0.75rem; }
+
+    esp-web-install-button { display: inline-block; }
+
+    esp-web-install-button button,
+    .flash-btn {
+      background: #00ff88;
+      color: #000;
+      border: none;
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.3px;
+    }
+
+    esp-web-install-button button:hover,
+    .flash-btn:hover { background: #00cc6a; transform: translateY(-1px); }
+
+    .link-btn { font-size: 0.8rem; color: #555; text-decoration: none; transition: color 0.15s; }
+    .link-btn:hover { color: #00ff88; }
+
+    .instructions {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      border: 1px solid #1a1a2e;
+      border-radius: 12px;
+      background: #111118;
+    }
+
+    .instructions h3 { font-size: 0.95rem; color: #fff; margin-bottom: 0.75rem; }
+    .instructions ol { padding-left: 1.25rem; color: #888; font-size: 0.85rem; line-height: 1.8; }
+    .instructions ol li::marker { color: #00ff88; }
+
+    .instructions .note {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: #1a1510;
+      border-left: 3px solid #ff8800;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.8rem;
+      color: #cc9944;
+    }
+
+    .instructions .detect-note {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: #0d1f15;
+      border-left: 3px solid #00ff88;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.8rem;
+      color: #66cc88;
+    }
+
+    footer { margin-top: auto; padding: 1.5rem; text-align: center; font-size: 0.75rem; color: #333; }
+    footer a { color: #444; text-decoration: none; }
+    footer a:hover { color: #00ff88; }
+
+    .unsupported { display: none; text-align: center; padding: 2rem; color: #ff4444; font-size: 0.9rem; }
+    .unsupported.show { display: block; }
   </style>
 </head>
 <body>
+
   <header>
     <h1>ESP32-DIV <span>Web Flasher</span></h1>
     <p>Flash firmware to your ESP32-DIV directly from the browser</p>
   </header>
+
   <div class="container">
-    <div class="unsupported" id="unsupported">Your browser doesn't support Web Serial.<br>Use <strong>Chrome</strong> or <strong>Edge</strong> (desktop) to flash.</div>
-    <div class="board-select" id="boardSelect">
-      <button class="board-btn active" data-board="v1" onclick="selectBoard('v1')">DIV v1<small>ESP32</small></button>
-      <button class="board-btn" data-board="v2" onclick="selectBoard('v2')">DIV v2<small>ESP32-S3</small></button>
+
+    <div class="unsupported" id="unsupported">
+      Your browser doesn't support Web Serial.<br>
+      Use <strong>Chrome</strong> or <strong>Edge</strong> (desktop) to flash.
     </div>
-    <div class="fw-section active" id="fw-v1">
-      <div class="fw-card"><h3>CiferTech Original</h3><div class="version">v1.5.0</div><p>Official ESP32-DIV firmware. Wi-Fi deauth, beacon spam, probe sniffing, BLE tools, packet monitor with PCAP logging, and OTA updates via SD.</p><div class="tags"><span class="tag">Wi-Fi</span><span class="tag">BLE</span><span class="tag">Deauth</span><span class="tag">Beacon Spam</span><span class="tag">Packet Monitor</span><span class="tag">SD Logging</span></div><div class="actions"><esp-web-install-button manifest="manifests/cifertech-v1.json"><button slot="activate" class="flash-btn">Flash</button></esp-web-install-button><a href="https://github.com/cifertech/ESP32-DIV" target="_blank" class="link-btn">Source &rarr;</a></div></div>
-      <div class="fw-card"><h3>HaleHound</h3><div class="version">v2.5.0</div><p>Ground-up rewrite with 30+ attack modules. EAPOL/PMKID capture, Karma AP, NRF24 sniffer, MouseJack, AirTag suite, BLE Predator honeypot, and jam detection.</p><div class="tags"><span class="tag">Wi-Fi</span><span class="tag">BLE</span><span class="tag">NRF24</span><span class="tag">Sub-GHz</span><span class="tag">PMKID</span><span class="tag">Karma</span><span class="tag">MouseJack</span></div><div class="actions"><esp-web-install-button manifest="manifests/halehound-v1.json"><button slot="activate" class="flash-btn">Flash</button></esp-web-install-button><a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank" class="link-btn">Source &rarr;</a></div></div>
+
+    <div class="auto-badge" id="autoBadge">
+      <span class="dot"></span>
+      Auto-detect &mdash; plug in your DIV and hit Flash. We detect v1 (ESP32) or v2 (ESP32-S3) automatically.
     </div>
-    <div class="fw-section" id="fw-v2">
-      <div class="fw-card"><h3>CiferTech Original</h3><div class="version">v1.5.0</div><p>Official ESP32-DIV v2 firmware. ESP32-S3 for cleaner pin mapping, expanded module support, improved stability. Touch calibration and serial monitor.</p><div class="tags"><span class="tag">Wi-Fi</span><span class="tag">BLE</span><span class="tag">Deauth</span><span class="tag">Beacon Spam</span><span class="tag">Touch Cal</span><span class="tag">Serial Mon</span></div><div class="actions"><esp-web-install-button manifest="manifests/cifertech-v2.json"><button slot="activate" class="flash-btn">Flash</button></esp-web-install-button><a href="https://github.com/cifertech/ESP32-DIV" target="_blank" class="link-btn">Source &rarr;</a></div></div>
-      <div class="fw-card"><h3>HaleHound</h3><div class="version">v2.5.0</div><p>Full HaleHound suite for ESP32-S3. Native USB, extra GPIO for modules, improved concurrent radio operation. All 30+ modules included.</p><div class="tags"><span class="tag">Wi-Fi</span><span class="tag">BLE</span><span class="tag">NRF24</span><span class="tag">Sub-GHz</span><span class="tag">PMKID</span><span class="tag">USB Native</span></div><div class="actions"><esp-web-install-button manifest="manifests/halehound-v2.json"><button slot="activate" class="flash-btn">Flash</button></esp-web-install-button><a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank" class="link-btn">Source &rarr;</a></div></div>
+
+    <div class="fw-card">
+      <h3>CiferTech Original</h3>
+      <div class="version">v1.5.0</div>
+      <div class="chip-support">
+        Supports: <span class="chip">ESP32 (DIV v1)</span> &amp; <span class="chip">ESP32-S3 (DIV v2)</span>
+      </div>
+      <p>
+        Official ESP32-DIV firmware by CiferTech. Wi-Fi deauth, beacon spam,
+        probe sniffing, BLE tools, packet monitor with PCAP logging, and OTA updates via SD.
+        V2 adds touch calibration and serial monitor.
+      </p>
+      <div class="tags">
+        <span class="tag">Wi-Fi</span>
+        <span class="tag">BLE</span>
+        <span class="tag">Deauth</span>
+        <span class="tag">Beacon Spam</span>
+        <span class="tag">Packet Monitor</span>
+        <span class="tag">SD Logging</span>
+      </div>
+      <div class="actions">
+        <esp-web-install-button manifest="manifests/cifertech.json">
+          <button slot="activate" class="flash-btn">Flash</button>
+        </esp-web-install-button>
+        <a href="https://github.com/cifertech/ESP32-DIV" target="_blank" class="link-btn">Source &rarr;</a>
+      </div>
     </div>
-    <div class="instructions"><h3>How to Flash</h3><ol><li>Connect your ESP32-DIV via USB</li><li>Select your board version above (v1 or v2)</li><li>Click <strong>Flash</strong> on the firmware you want</li><li>Select the COM/serial port in the popup</li><li>Wait for the flash to complete (~60 seconds)</li></ol><div class="note">If the device isn't detected, hold the <strong>BOOT</strong> button while plugging in USB, then try again.</div></div>
+
+    <div class="fw-card">
+      <h3>HaleHound</h3>
+      <div class="version">v2.5.0</div>
+      <div class="chip-support">
+        Supports: <span class="chip">ESP32 (DIV v1)</span> &amp; <span class="chip">ESP32-S3 (DIV v2)</span>
+      </div>
+      <p>
+        Ground-up rewrite with 30+ attack modules. EAPOL/PMKID capture,
+        Karma AP, NRF24 sniffer, MouseJack, AirTag suite, BLE Predator
+        honeypot, and jam detection. V2 unlocks native USB and extra GPIO.
+      </p>
+      <div class="tags">
+        <span class="tag">Wi-Fi</span>
+        <span class="tag">BLE</span>
+        <span class="tag">NRF24</span>
+        <span class="tag">Sub-GHz</span>
+        <span class="tag">PMKID</span>
+        <span class="tag">Karma</span>
+        <span class="tag">MouseJack</span>
+      </div>
+      <div class="actions">
+        <esp-web-install-button manifest="manifests/halehound.json">
+          <button slot="activate" class="flash-btn">Flash</button>
+        </esp-web-install-button>
+        <a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank" class="link-btn">Source &rarr;</a>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <h3>How to Flash</h3>
+      <ol>
+        <li>Connect your ESP32-DIV via USB</li>
+        <li>Click <strong>Flash</strong> on the firmware you want</li>
+        <li>Select the COM/serial port in the popup</li>
+        <li>Wait for the flash to complete (~60 seconds)</li>
+      </ol>
+      <div class="detect-note">
+        <strong>Auto-detect:</strong> The flasher reads your chip ID on connect and
+        picks the correct build for DIV v1 (ESP32) or DIV v2 (ESP32-S3). No manual selection needed.
+      </div>
+      <div class="note">
+        If the device isn't detected, hold the <strong>BOOT</strong> button while
+        plugging in USB, then try again.
+      </div>
+    </div>
+
   </div>
-  <footer>Built for the ESP32-DIV community &mdash; <a href="https://github.com/cifertech/ESP32-DIV">CiferTech</a> · <a href="https://github.com/JesseCHale/HaleHound-CYD">HaleHound</a></footer>
+
+  <footer>
+    Built for the ESP32-DIV community &mdash;
+    <a href="https://github.com/cifertech/ESP32-DIV">CiferTech</a> \u00B7
+    <a href="https://github.com/JesseCHale/HaleHound-CYD">HaleHound</a>
+  </footer>
+
   <script>
-    if(!("serial" in navigator)){document.getElementById("unsupported").classList.add("show");document.getElementById("boardSelect").style.display="none"}
-    function selectBoard(b){document.querySelectorAll(".board-btn").forEach(x=>x.classList.remove("active"));document.querySelector('[data-board="'+b+'"]').classList.add("active");document.querySelectorAll(".fw-section").forEach(s=>s.classList.remove("active"));document.getElementById("fw-"+b).classList.add("active")}
+    if (!("serial" in navigator)) {
+      document.getElementById("unsupported").classList.add("show");
+      document.getElementById("autoBadge").style.display = "none";
+    }
   </script>
+
 </body>
 </html>
