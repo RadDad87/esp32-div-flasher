@@ -5,395 +5,595 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP32-DIV Web Flasher</title>
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #06060b;
+      --bg-card: #0c0c14;
+      --bg-card-hover: #10101a;
+      --border: #1a1a2e;
+      --border-hover: #2a2a4e;
+      --text: #c8c8d0;
+      --text-dim: #666;
+      --text-bright: #f0f0f4;
+      --accent: #00ff88;
+      --accent-dim: #00cc6a;
+      --accent-glow: rgba(0,255,136,0.15);
+      --red: #ff4466;
+      --orange: #ff9933;
+      --blue: #4488ff;
+      --purple: #9966ff;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+      --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: #0a0a0f;
-      color: #e0e0e0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      overflow-x: hidden;
     }
 
+    /* ---- Scanline overlay ---- */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* ---- Matrix rain background ---- */
+    #matrix { position: fixed; inset: 0; z-index: 0; opacity: 0.04; pointer-events: none; }
+
+    .page-wrap { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+    /* ---- Header ---- */
     header {
-      width: 100%;
-      padding: 2rem 1rem 1.5rem;
-      text-align: center;
-      background: linear-gradient(180deg, #111118 0%, #0a0a0f 100%);
-      border-bottom: 1px solid #1a1a2e;
+      width: 100%; padding: 2.5rem 1rem 2rem; text-align: center;
+      background: linear-gradient(180deg, #0a0a14 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+      position: relative; overflow: hidden;
     }
+    header::before {
+      content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(0,255,136,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .logo { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .logo-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, #0d2818, #0a1f14);
+      border: 1px solid #1a3d28;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+    h1 { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+    h1 span { color: #444; font-weight: 400; }
+    .subtitle { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.3rem; }
+    .header-meta {
+      display: flex; align-items: center; justify-content: center; gap: 1rem;
+      margin-top: 0.75rem; font-size: 0.7rem; color: #444; font-family: var(--mono);
+    }
+    .header-meta a { color: #555; text-decoration: none; display: flex; align-items: center; gap: 0.3rem; transition: color 0.15s; }
+    .header-meta a:hover { color: var(--accent); }
 
-    header h1 { font-size: 1.8rem; font-weight: 700; color: #00ff88; letter-spacing: -0.5px; }
-    header h1 span { color: #555; font-weight: 400; }
-    header p { color: #666; margin-top: 0.4rem; font-size: 0.9rem; }
+    .container { max-width: 780px; width: 100%; padding: 1.5rem 1rem 3rem; }
 
-    .container { max-width: 720px; width: 100%; padding: 1.5rem 1rem; }
-
-    /* ---- Auto-detect badge ---- */
-    .auto-badge {
-      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 0.6rem 1rem; margin-bottom: 1.5rem;
-      border: 1px solid #1a2e1f; border-radius: 10px; background: #0d1f15;
-      font-size: 0.82rem; color: #66cc88;
+    /* ---- Status bar ---- */
+    .status-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.7rem 1rem; margin-bottom: 1.5rem;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg-card); font-family: var(--mono); font-size: 0.75rem;
     }
-    .auto-badge .dot {
-      width: 8px; height: 8px; border-radius: 50%; background: #00ff88;
-      animation: pulse 2s ease-in-out infinite;
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      animation: blink 2s ease-in-out infinite;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
-      50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(0,255,136,0); }
+    .status-dot.green { background: var(--accent); box-shadow: 0 0 8px rgba(0,255,136,0.5); }
+    .status-dot.yellow { background: var(--orange); box-shadow: 0 0 8px rgba(255,153,51,0.5); }
+    .status-dot.red { background: var(--red); box-shadow: 0 0 8px rgba(255,68,102,0.5); }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
     }
+    .status-text { color: var(--text-dim); }
+    .status-text strong { color: var(--accent); font-weight: 600; }
+    .status-right { margin-left: auto; color: #333; }
 
     /* ---- Section headers ---- */
-    .section-title {
-      font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 1rem;
+    .section-head {
       display: flex; align-items: center; gap: 0.5rem;
+      font-family: var(--mono); font-size: 0.8rem; font-weight: 600;
+      color: var(--text-dim); margin-bottom: 1rem;
+      text-transform: uppercase; letter-spacing: 1px;
     }
-    .section-title .icon { color: #00ff88; font-size: 1.1rem; }
+    .section-head::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
 
     /* ---- Firmware cards ---- */
     .fw-card {
-      border: 1px solid #1a1a2e; border-radius: 12px; background: #111118;
-      padding: 1.25rem; margin-bottom: 0.75rem; transition: border-color 0.2s;
+      border: 1px solid var(--border); border-radius: 14px;
+      background: var(--bg-card); padding: 1.5rem;
+      margin-bottom: 1rem; transition: all 0.25s;
+      position: relative; overflow: hidden;
     }
-    .fw-card:hover { border-color: #2a2a3e; }
-    .fw-card h3 { font-size: 1.05rem; color: #fff; margin-bottom: 0.15rem; }
-    .fw-card .version { font-size: 0.8rem; color: #00ff88; font-weight: 600; margin-bottom: 0.5rem; }
-    .fw-card .chip-support {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      font-size: 0.7rem; color: #888; background: #0d0d18;
-      padding: 0.2rem 0.6rem; border-radius: 20px; margin-bottom: 0.6rem; border: 1px solid #1a1a2e;
+    .fw-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0; transition: opacity 0.3s;
     }
-    .fw-card .chip-support .chip { color: #66aaff; font-weight: 600; }
-    .fw-card p { font-size: 0.85rem; color: #888; line-height: 1.5; margin-bottom: 1rem; }
-    .fw-card .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem; }
-    .tag { font-size: 0.7rem; padding: 0.2rem 0.55rem; border-radius: 20px; background: #1a1a2e; color: #aaa; font-weight: 500; }
-    .fw-card .actions { display: flex; align-items: center; gap: 0.75rem; }
+    .fw-card:hover { border-color: var(--border-hover); background: var(--bg-card-hover); }
+    .fw-card:hover::before { opacity: 1; }
 
+    .fw-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.75rem; }
+    .fw-title-group { flex: 1; }
+    .fw-name { font-size: 1.1rem; font-weight: 700; color: var(--text-bright); font-family: var(--mono); }
+    .fw-version-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
+    .fw-version {
+      font-family: var(--mono); font-size: 0.75rem; font-weight: 600;
+      color: var(--accent); background: rgba(0,255,136,0.08);
+      padding: 0.15rem 0.5rem; border-radius: 6px; border: 1px solid rgba(0,255,136,0.15);
+    }
+    .fw-latest {
+      font-family: var(--mono); font-size: 0.6rem; font-weight: 600;
+      color: var(--orange); background: rgba(255,153,51,0.08);
+      padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid rgba(255,153,51,0.15);
+      display: none;
+    }
+    .fw-latest.show { display: inline-block; }
+    .fw-badge {
+      font-family: var(--mono); font-size: 0.6rem; padding: 0.2rem 0.5rem;
+      border-radius: 6px; font-weight: 600; white-space: nowrap;
+    }
+    .fw-badge.official { color: var(--blue); background: rgba(68,136,255,0.1); border: 1px solid rgba(68,136,255,0.2); }
+    .fw-badge.community { color: var(--purple); background: rgba(153,102,255,0.1); border: 1px solid rgba(153,102,255,0.2); }
+
+    .chip-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 0.75rem; font-family: var(--mono); font-size: 0.7rem;
+    }
+    .chip-label { color: #555; }
+    .chip-tag {
+      color: var(--blue); font-weight: 600; background: rgba(68,136,255,0.08);
+      padding: 0.1rem 0.4rem; border-radius: 4px; border: 1px solid rgba(68,136,255,0.12);
+    }
+
+    .fw-desc { font-size: 0.85rem; color: #888; line-height: 1.6; margin-bottom: 1rem; }
+
+    .fw-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
+    .tag {
+      font-family: var(--mono); font-size: 0.65rem; font-weight: 500;
+      padding: 0.2rem 0.5rem; border-radius: 6px;
+      background: #111120; color: #777; border: 1px solid #1a1a2e;
+    }
+
+    .fw-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+    /* Flash button styling */
     esp-web-install-button { display: inline-block; }
     esp-web-install-button button, .flash-btn {
-      background: #00ff88; color: #000; border: none; padding: 0.6rem 1.4rem;
-      border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer;
-      transition: all 0.15s; letter-spacing: 0.3px;
+      font-family: var(--mono); font-weight: 700; font-size: 0.8rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #000; border: none;
+      padding: 0.65rem 1.6rem; border-radius: 8px;
+      cursor: pointer; transition: all 0.2s;
+      letter-spacing: 0.5px; text-transform: uppercase;
+      box-shadow: 0 0 20px rgba(0,255,136,0.15);
     }
-    esp-web-install-button button:hover, .flash-btn:hover { background: #00cc6a; transform: translateY(-1px); }
-    .link-btn { font-size: 0.8rem; color: #555; text-decoration: none; transition: color 0.15s; }
-    .link-btn:hover { color: #00ff88; }
+    esp-web-install-button button:hover, .flash-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 25px rgba(0,255,136,0.3);
+    }
+    esp-web-install-button button:active, .flash-btn:active { transform: translateY(0); }
+
+    .link-btn {
+      font-family: var(--mono); font-size: 0.75rem; font-weight: 500;
+      color: #555; text-decoration: none; transition: color 0.15s;
+      display: flex; align-items: center; gap: 0.3rem;
+    }
+    .link-btn:hover { color: var(--accent); }
+
+    /* ---- Release notes (collapsible) ---- */
+    .release-notes {
+      margin-top: 1rem; padding-top: 1rem;
+      border-top: 1px solid var(--border); display: none;
+    }
+    .release-notes.loaded { display: block; }
+    .release-toggle {
+      font-family: var(--mono); font-size: 0.7rem; color: #555;
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.3rem 0.6rem; cursor: pointer; transition: all 0.15s;
+    }
+    .release-toggle:hover { color: var(--accent); border-color: rgba(0,255,136,0.3); }
+    .release-body {
+      display: none; margin-top: 0.75rem; padding: 0.75rem;
+      background: #080810; border-radius: 8px; border: 1px solid var(--border);
+      font-family: var(--mono); font-size: 0.72rem; line-height: 1.7;
+      color: #777; max-height: 200px; overflow-y: auto;
+    }
+    .release-body.open { display: block; }
+    .release-body::-webkit-scrollbar { width: 4px; }
+    .release-body::-webkit-scrollbar-track { background: transparent; }
+    .release-body::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
 
     /* ---- Board ID section ---- */
     .board-id {
-      margin-top: 1.5rem; border: 1px solid #1a1a2e; border-radius: 12px;
-      background: #111118; padding: 1.25rem; overflow: hidden;
+      margin-top: 1.5rem; border: 1px solid var(--border); border-radius: 14px;
+      background: var(--bg-card); padding: 1.25rem; overflow: hidden;
     }
     .board-id-header {
       display: flex; align-items: center; justify-content: space-between;
       cursor: pointer; user-select: none;
     }
-    .board-id-header h3 { font-size: 0.95rem; color: #fff; }
-    .board-id-toggle {
-      font-size: 0.75rem; color: #00ff88; background: #0d1f15;
-      padding: 0.3rem 0.7rem; border-radius: 6px; border: 1px solid #1a2e1f;
-      transition: background 0.15s;
+    .board-id-header h3 {
+      font-family: var(--mono); font-size: 0.85rem; font-weight: 600; color: var(--text-bright);
     }
-    .board-id-header:hover .board-id-toggle { background: #143d24; }
+    .board-id-toggle {
+      font-family: var(--mono); font-size: 0.7rem; color: var(--accent);
+      background: rgba(0,255,136,0.06); padding: 0.3rem 0.7rem;
+      border-radius: 6px; border: 1px solid rgba(0,255,136,0.15);
+      transition: all 0.15s;
+    }
+    .board-id-header:hover .board-id-toggle { background: rgba(0,255,136,0.12); }
 
     .board-id-content { display: none; margin-top: 1rem; }
     .board-id-content.open { display: block; }
 
     .board-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
-    @media (max-width: 600px) { .board-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .board-grid { grid-template-columns: 1fr; } }
 
     .board-panel {
-      border: 1px solid #1a1a2e; border-radius: 10px; background: #0d0d14;
-      padding: 1rem; text-align: center;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: #080810; padding: 1rem; text-align: center;
     }
-    .board-panel h4 { font-size: 0.9rem; color: #fff; margin-bottom: 0.15rem; }
-    .board-panel .board-chip { font-size: 0.7rem; color: #66aaff; font-weight: 600; margin-bottom: 0.75rem; }
-    .board-panel svg { width: 100%; max-width: 260px; height: auto; margin: 0 auto 0.75rem; display: block; }
+    .board-panel h4 { font-family: var(--mono); font-size: 0.85rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.15rem; }
+    .board-panel .board-chip { font-family: var(--mono); font-size: 0.7rem; color: var(--blue); font-weight: 600; margin-bottom: 0.75rem; }
+    .board-panel svg { width: 100%; max-width: 240px; height: auto; margin: 0 auto 0.75rem; display: block; }
 
-    .board-panel .board-traits {
-      text-align: left; font-size: 0.75rem; color: #888; line-height: 1.7;
-      padding-left: 0.25rem;
-    }
+    .board-panel .board-traits { text-align: left; font-size: 0.72rem; color: #777; line-height: 1.8; padding-left: 0.25rem; }
     .board-panel .board-traits li { list-style: none; }
-    .board-panel .board-traits li::before { content: "→ "; color: #00ff88; }
+    .board-panel .board-traits li::before { content: "> "; color: var(--accent); font-family: var(--mono); font-weight: 700; }
 
     .legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; justify-content: center; }
-    .legend-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: #888; }
-    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+    .legend-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.65rem; color: #666; font-family: var(--mono); }
+    .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
 
-    /* ---- Instructions ---- */
-    .instructions {
-      margin-top: 1.5rem; padding: 1.25rem;
-      border: 1px solid #1a1a2e; border-radius: 12px; background: #111118;
+    /* ---- Instructions (terminal style) ---- */
+    .terminal {
+      margin-top: 1.5rem; border: 1px solid var(--border); border-radius: 14px;
+      background: var(--bg-card); overflow: hidden;
     }
-    .instructions h3 { font-size: 0.95rem; color: #fff; margin-bottom: 0.75rem; }
-    .instructions ol { padding-left: 1.25rem; color: #888; font-size: 0.85rem; line-height: 1.8; }
-    .instructions ol li::marker { color: #00ff88; }
-    .instructions .note {
-      margin-top: 0.75rem; padding: 0.6rem 0.75rem; background: #1a1510;
-      border-left: 3px solid #ff8800; border-radius: 0 6px 6px 0;
-      font-size: 0.8rem; color: #cc9944;
+    .terminal-bar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.6rem 1rem; background: #0e0e18; border-bottom: 1px solid var(--border);
     }
-    .instructions .detect-note {
-      margin-top: 0.75rem; padding: 0.6rem 0.75rem; background: #0d1f15;
-      border-left: 3px solid #00ff88; border-radius: 0 6px 6px 0;
-      font-size: 0.8rem; color: #66cc88;
-    }
+    .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .terminal-dot.r { background: #ff5f57; }
+    .terminal-dot.y { background: #febc2e; }
+    .terminal-dot.g { background: #28c840; }
+    .terminal-title { margin-left: 0.5rem; font-family: var(--mono); font-size: 0.7rem; color: #444; }
+    .terminal-body { padding: 1.25rem; font-family: var(--mono); font-size: 0.78rem; line-height: 2; color: #777; }
+    .terminal-body .prompt { color: var(--accent); font-weight: 700; }
+    .terminal-body .cmd { color: var(--text-bright); }
+    .terminal-body .comment { color: #444; }
+    .terminal-body .warn { color: var(--orange); }
+    .terminal-body .highlight { color: var(--red); font-weight: 700; }
 
-    footer { margin-top: auto; padding: 1.5rem; text-align: center; font-size: 0.75rem; color: #333; }
-    footer a { color: #444; text-decoration: none; }
-    footer a:hover { color: #00ff88; }
+    .detect-box {
+      margin-top: 1rem; padding: 0.75rem; border-radius: 8px;
+      background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1);
+      font-family: var(--mono); font-size: 0.72rem; color: #66cc88; line-height: 1.6;
+    }
+    .detect-box strong { color: var(--accent); }
+    .boot-box {
+      margin-top: 0.5rem; padding: 0.75rem; border-radius: 8px;
+      background: rgba(255,153,51,0.04); border: 1px solid rgba(255,153,51,0.1);
+      font-family: var(--mono); font-size: 0.72rem; color: #bb8844; line-height: 1.6;
+    }
+    .boot-box strong { color: var(--red); }
 
-    .unsupported { display: none; text-align: center; padding: 2rem; color: #ff4444; font-size: 0.9rem; }
+    /* ---- Unsupported banner ---- */
+    .unsupported {
+      display: none; text-align: center; padding: 1.5rem;
+      background: rgba(255,68,102,0.05); border: 1px solid rgba(255,68,102,0.15);
+      border-radius: 10px; margin-bottom: 1.5rem;
+      font-family: var(--mono); font-size: 0.8rem; color: var(--red);
+    }
     .unsupported.show { display: block; }
+
+    /* ---- Footer ---- */
+    footer {
+      width: 100%; padding: 2rem 1rem; text-align: center;
+      border-top: 1px solid var(--border); background: #08080d;
+      font-family: var(--mono); font-size: 0.7rem; color: #333;
+    }
+    footer a { color: #444; text-decoration: none; transition: color 0.15s; }
+    footer a:hover { color: var(--accent); }
+    .footer-links { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 0.5rem; }
+
+    /* ---- Loading skeleton ---- */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-card) 25%, #141420 50%, var(--bg-card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 640px) {
+      h1 { font-size: 1.3rem; }
+      .container { padding: 1rem 0.75rem 2rem; }
+      .fw-card { padding: 1.1rem; }
+      .fw-header { flex-direction: column; gap: 0.5rem; }
+      .header-meta { flex-wrap: wrap; }
+      .status-bar { flex-wrap: wrap; }
+      .fw-actions { gap: 0.5rem; }
+    }
+
+    /* ---- Animations ---- */
+    .fade-in {
+      opacity: 0; transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fw-card:nth-child(2) { animation-delay: 0.1s; }
+    .fw-card:nth-child(3) { animation-delay: 0.2s; }
   </style>
 </head>
 <body>
 
+<canvas id="matrix"></canvas>
+
+<div class="page-wrap">
+
   <header>
-    <h1>ESP32-DIV <span>Web Flasher</span></h1>
-    <p>Flash firmware to your ESP32-DIV directly from the browser</p>
+    <div class="logo">
+      <div class="logo-icon">&#9889;</div>
+      <h1>ESP32-DIV <span>Web Flasher</span></h1>
+    </div>
+    <p class="subtitle">Flash firmware to your ESP32-DIV directly from the browser</p>
+    <div class="header-meta">
+      <a href="https://github.com/RadDad87/esp32-div-flasher" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        RadDad87
+      </a>
+      <span>|</span>
+      <span id="repoStars">--</span> stars
+    </div>
   </header>
 
   <div class="container">
 
+    <!-- Unsupported browser -->
     <div class="unsupported" id="unsupported">
-      Your browser doesn't support Web Serial.<br>
-      Use <strong>Chrome</strong> or <strong>Edge</strong> (desktop) to flash.
+      > Web Serial not supported<br>
+      > Use Chrome or Edge (desktop) to flash firmware
     </div>
 
-    <div class="auto-badge" id="autoBadge">
-      <span class="dot"></span>
-      Auto-detect &mdash; plug in your DIV and hit Flash. We detect v1&nbsp;(ESP32) or v2&nbsp;(ESP32-S3) automatically.
+    <!-- Status bar -->
+    <div class="status-bar fade-in" id="statusBar">
+      <span class="status-dot green" id="statusDot"></span>
+      <span class="status-text" id="statusText">
+        <strong>READY</strong> &mdash; auto-detect enabled, plug in your DIV and flash
+      </span>
+      <span class="status-right" id="statusRight">v2.0</span>
     </div>
 
     <!-- ==================== Firmware ==================== -->
-    <div class="section-title"><span class="icon">&#9889;</span> Choose Firmware</div>
+    <div class="section-head fade-in">// firmware</div>
 
-    <div class="fw-card">
-      <h3>CiferTech Original</h3>
-      <div class="version">v1.5.0</div>
-      <div class="chip-support">
-        Supports: <span class="chip">ESP32 (DIV v1)</span> &amp; <span class="chip">ESP32-S3 (DIV v2)</span>
+    <!-- CiferTech -->
+    <div class="fw-card fade-in" id="card-cifertech">
+      <div class="fw-header">
+        <div class="fw-title-group">
+          <div class="fw-name">CiferTech Original</div>
+          <div class="fw-version-row">
+            <span class="fw-version" id="cifertech-version">v1.5.0</span>
+            <span class="fw-latest" id="cifertech-latest"></span>
+          </div>
+        </div>
+        <span class="fw-badge official">OFFICIAL</span>
       </div>
-      <p>
+      <div class="chip-row">
+        <span class="chip-label">targets:</span>
+        <span class="chip-tag">ESP32 (DIV v1)</span>
+        <span class="chip-tag">ESP32-S3 (DIV v2)</span>
+      </div>
+      <p class="fw-desc">
         Official ESP32-DIV firmware by CiferTech. Wi-Fi deauth, beacon spam,
         probe sniffing, BLE tools, packet monitor with PCAP logging, and OTA updates via SD.
         V2 adds touch calibration and serial monitor.
       </p>
-      <div class="tags">
+      <div class="fw-tags">
         <span class="tag">Wi-Fi</span><span class="tag">BLE</span>
         <span class="tag">Deauth</span><span class="tag">Beacon Spam</span>
         <span class="tag">Packet Monitor</span><span class="tag">SD Logging</span>
       </div>
-      <div class="actions">
+      <div class="fw-actions">
         <esp-web-install-button manifest="manifests/cifertech.json">
-          <button slot="activate" class="flash-btn">Flash</button>
+          <button slot="activate" class="flash-btn">&#9889; Flash</button>
         </esp-web-install-button>
-        <a href="https://github.com/cifertech/ESP32-DIV" target="_blank" class="link-btn">Source &rarr;</a>
+        <a href="https://github.com/cifertech/ESP32-DIV" target="_blank" class="link-btn">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Source
+        </a>
+        <button class="release-toggle" onclick="toggleRelease('cifertech')">Release notes</button>
+      </div>
+      <div class="release-notes" id="cifertech-notes">
+        <div class="release-body" id="cifertech-notes-body">Loading release notes...</div>
       </div>
     </div>
 
-    <div class="fw-card">
-      <h3>HaleHound</h3>
-      <div class="version">v3.5.5</div>
-      <div class="chip-support">
-        Supports: <span class="chip">ESP32 (DIV v1)</span> &amp; <span class="chip">ESP32-S3 (DIV v2)</span>
+    <!-- HaleHound -->
+    <div class="fw-card fade-in" id="card-halehound">
+      <div class="fw-header">
+        <div class="fw-title-group">
+          <div class="fw-name">HaleHound</div>
+          <div class="fw-version-row">
+            <span class="fw-version" id="halehound-version">v3.5.5</span>
+            <span class="fw-latest" id="halehound-latest"></span>
+          </div>
+        </div>
+        <span class="fw-badge community">COMMUNITY</span>
       </div>
-      <p>
+      <div class="chip-row">
+        <span class="chip-label">targets:</span>
+        <span class="chip-tag">ESP32 (DIV v1)</span>
+        <span class="chip-tag">ESP32-S3 (DIV v2)</span>
+      </div>
+      <p class="fw-desc">
         Ground-up rewrite with 30+ attack modules. EAPOL/PMKID capture,
         Karma AP, NRF24 sniffer, MouseJack, AirTag suite, BLE Predator
         honeypot, jam detection, and Airoha BLE exploit. Single FULL.bin flash.
       </p>
-      <div class="tags">
+      <div class="fw-tags">
         <span class="tag">Wi-Fi</span><span class="tag">BLE</span>
         <span class="tag">NRF24</span><span class="tag">Sub-GHz</span>
         <span class="tag">PMKID</span><span class="tag">Karma</span>
         <span class="tag">MouseJack</span>
       </div>
-      <div class="actions">
+      <div class="fw-actions">
         <esp-web-install-button manifest="manifests/halehound.json">
-          <button slot="activate" class="flash-btn">Flash</button>
+          <button slot="activate" class="flash-btn">&#9889; Flash</button>
         </esp-web-install-button>
-        <a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank" class="link-btn">Source &rarr;</a>
+        <a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank" class="link-btn">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Source
+        </a>
+        <button class="release-toggle" onclick="toggleRelease('halehound')">Release notes</button>
+      </div>
+      <div class="release-notes" id="halehound-notes">
+        <div class="release-body" id="halehound-notes-body">Loading release notes...</div>
       </div>
     </div>
 
-    <!-- ==================== Board ID Diagrams ==================== -->
-    <div class="board-id">
+    <!-- ==================== Board ID ==================== -->
+    <div class="section-head fade-in" style="margin-top:1.5rem">// board identification</div>
+
+    <div class="board-id fade-in">
       <div class="board-id-header" onclick="toggleBoardId()">
-        <h3>Which board do I have?</h3>
-        <span class="board-id-toggle" id="boardToggle">Show diagrams</span>
+        <h3>> which_board_do_i_have()</h3>
+        <span class="board-id-toggle" id="boardToggle">show</span>
       </div>
       <div class="board-id-content" id="boardContent">
-        <p style="font-size:0.82rem; color:#888; margin-bottom:0.75rem;">
-          Don't worry about picking wrong &mdash; the flasher auto-detects your chip. But here's how to tell them apart:
+        <p style="font-family:var(--mono); font-size:0.72rem; color:#555; margin-bottom:0.75rem;">
+          // Don't worry &mdash; the flasher auto-detects your chip. But here's how to tell them apart:
         </p>
 
         <div class="board-grid">
 
-          <!-- ===== DIV v1 Diagram ===== -->
+          <!-- DIV v1 -->
           <div class="board-panel">
             <h4>ESP32-DIV v1</h4>
             <div class="board-chip">ESP32 &middot; Micro USB</div>
-
             <svg viewBox="0 0 220 340" xmlns="http://www.w3.org/2000/svg">
-              <!-- PCB body -->
-              <rect x="20" y="10" width="180" height="320" rx="8" fill="#1a1a2e" stroke="#2a2a3e" stroke-width="1.5"/>
-
-              <!-- TFT Display -->
-              <rect x="35" y="25" width="150" height="112" rx="4" fill="#0d0d18" stroke="#333" stroke-width="1"/>
-              <text x="110" y="80" text-anchor="middle" fill="#444" font-size="10" font-family="sans-serif">ILI9341 2.8" TFT</text>
-              <text x="110" y="94" text-anchor="middle" fill="#333" font-size="8" font-family="sans-serif">Touch Display</text>
-
-              <!-- ESP32 DevKit module (visible at bottom of sandwich) -->
-              <rect x="40" y="150" width="140" height="70" rx="4" fill="#1f2937" stroke="#4a5568" stroke-width="1"/>
-              <text x="110" y="178" text-anchor="middle" fill="#66aaff" font-size="9" font-weight="bold" font-family="sans-serif">ESP32 DevKit</text>
-              <text x="110" y="192" text-anchor="middle" fill="#555" font-size="7" font-family="sans-serif">CP2102 onboard</text>
-
-              <!-- BOOT button -->
-              <rect x="48" y="158" width="24" height="12" rx="3" fill="#ff4444" stroke="#cc3333" stroke-width="1"/>
-              <text x="60" y="166" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold" font-family="sans-serif">BOOT</text>
-              <!-- BOOT callout -->
-              <line x1="60" y1="155" x2="60" y2="143" stroke="#ff4444" stroke-width="1" stroke-dasharray="2,2"/>
-              <text x="60" y="142" text-anchor="middle" fill="#ff6666" font-size="7" font-weight="bold" font-family="sans-serif">BOOT</text>
-
-              <!-- EN/RST button -->
-              <rect x="148" y="158" width="24" height="12" rx="3" fill="#ffaa00" stroke="#cc8800" stroke-width="1"/>
-              <text x="160" y="166" text-anchor="middle" fill="#000" font-size="5.5" font-weight="bold" font-family="sans-serif">EN/RST</text>
-
-              <!-- Pin headers (sandwich connection) -->
-              <g fill="#555" stroke="#666" stroke-width="0.5">
+              <rect x="20" y="10" width="180" height="320" rx="8" fill="#0e0e1a" stroke="#222" stroke-width="1.5"/>
+              <rect x="35" y="25" width="150" height="112" rx="4" fill="#080812" stroke="#2a2a3e" stroke-width="1"/>
+              <text x="110" y="80" text-anchor="middle" fill="#333" font-size="10" font-family="monospace">ILI9341 2.8" TFT</text>
+              <text x="110" y="94" text-anchor="middle" fill="#282830" font-size="8" font-family="monospace">Touch Display</text>
+              <rect x="40" y="150" width="140" height="70" rx="4" fill="#12121e" stroke="#3a3a5e" stroke-width="1"/>
+              <text x="110" y="178" text-anchor="middle" fill="#4488ff" font-size="9" font-weight="bold" font-family="monospace">ESP32 DevKit</text>
+              <text x="110" y="192" text-anchor="middle" fill="#444" font-size="7" font-family="monospace">CP2102 onboard</text>
+              <rect x="48" y="158" width="24" height="12" rx="3" fill="#ff4466" stroke="#cc3344" stroke-width="1"/>
+              <text x="60" y="166" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold" font-family="monospace">BOOT</text>
+              <line x1="60" y1="155" x2="60" y2="143" stroke="#ff4466" stroke-width="1" stroke-dasharray="2,2"/>
+              <text x="60" y="142" text-anchor="middle" fill="#ff6677" font-size="7" font-weight="bold" font-family="monospace">BOOT</text>
+              <rect x="148" y="158" width="24" height="12" rx="3" fill="#ff9933" stroke="#cc7722" stroke-width="1"/>
+              <text x="160" y="166" text-anchor="middle" fill="#000" font-size="5.5" font-weight="bold" font-family="monospace">EN/RST</text>
+              <g fill="#333" stroke="#444" stroke-width="0.5">
                 <rect x="28" y="155" width="6" height="60" rx="1"/>
                 <rect x="186" y="155" width="6" height="60" rx="1"/>
               </g>
-              <text x="20" y="188" text-anchor="end" fill="#444" font-size="6" font-family="sans-serif" transform="rotate(-90,20,188)">HEADERS</text>
-
-              <!-- Micro USB port -->
               <rect x="85" y="222" width="50" height="14" rx="3" fill="#00ff88" stroke="#00cc6a" stroke-width="1.5"/>
-              <text x="110" y="232" text-anchor="middle" fill="#000" font-size="7" font-weight="bold" font-family="sans-serif">MICRO USB</text>
-              <!-- USB callout -->
+              <text x="110" y="232" text-anchor="middle" fill="#000" font-size="7" font-weight="bold" font-family="monospace">MICRO USB</text>
               <line x1="110" y1="238" x2="110" y2="252" stroke="#00ff88" stroke-width="1" stroke-dasharray="2,2"/>
-              <text x="110" y="261" text-anchor="middle" fill="#00ff88" font-size="7" font-weight="bold" font-family="sans-serif">DATA + POWER</text>
-
-              <!-- SD Card slot -->
-              <rect x="140" y="255" width="50" height="25" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-              <text x="165" y="270" text-anchor="middle" fill="#888" font-size="7" font-family="sans-serif">SD Card</text>
-
-              <!-- Nav buttons (side) -->
+              <text x="110" y="261" text-anchor="middle" fill="#00ff88" font-size="7" font-weight="bold" font-family="monospace">DATA + POWER</text>
+              <rect x="140" y="255" width="50" height="25" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
+              <text x="165" y="270" text-anchor="middle" fill="#555" font-size="7" font-family="monospace">SD Card</text>
               <g>
-                <circle cx="50" cy="270" r="7" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-                <circle cx="50" cy="290" r="7" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-                <circle cx="50" cy="310" r="7" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-                <text x="50" y="272" text-anchor="middle" fill="#666" font-size="6" font-family="sans-serif">&#9650;</text>
-                <text x="50" y="293" text-anchor="middle" fill="#666" font-size="7" font-family="sans-serif">OK</text>
-                <text x="50" y="313" text-anchor="middle" fill="#666" font-size="6" font-family="sans-serif">&#9660;</text>
+                <circle cx="50" cy="270" r="7" fill="#16162a" stroke="#333" stroke-width="1"/>
+                <circle cx="50" cy="290" r="7" fill="#16162a" stroke="#333" stroke-width="1"/>
+                <circle cx="50" cy="310" r="7" fill="#16162a" stroke="#333" stroke-width="1"/>
+                <text x="50" y="272" text-anchor="middle" fill="#444" font-size="6" font-family="monospace">&#9650;</text>
+                <text x="50" y="293" text-anchor="middle" fill="#444" font-size="7" font-family="monospace">OK</text>
+                <text x="50" y="313" text-anchor="middle" fill="#444" font-size="6" font-family="monospace">&#9660;</text>
               </g>
-
-              <!-- Antenna connector -->
-              <circle cx="175" cy="300" r="10" fill="none" stroke="#ffaa00" stroke-width="1.5"/>
-              <circle cx="175" cy="300" r="3" fill="#ffaa00"/>
-              <text x="175" y="318" text-anchor="middle" fill="#888" font-size="6" font-family="sans-serif">Antenna</text>
+              <circle cx="175" cy="300" r="10" fill="none" stroke="#ff9933" stroke-width="1.5"/>
+              <circle cx="175" cy="300" r="3" fill="#ff9933"/>
+              <text x="175" y="318" text-anchor="middle" fill="#555" font-size="6" font-family="monospace">Antenna</text>
             </svg>
-
             <ul class="board-traits">
               <li>Sandwich-style PCB (main + shield)</li>
-              <li><strong style="color:#ff6666">BOOT btn</strong> on ESP32 DevKit module</li>
+              <li><strong style="color:#ff6677">BOOT btn</strong> on ESP32 DevKit module</li>
               <li><strong style="color:#00ff88">Micro USB</strong> on DevKit (bottom board)</li>
               <li>Pin headers connect boards</li>
               <li>3x NRF24 + CC1101 on shield</li>
             </ul>
           </div>
 
-          <!-- ===== DIV v2 Diagram ===== -->
+          <!-- DIV v2 -->
           <div class="board-panel">
             <h4>ESP32-DIV v2</h4>
             <div class="board-chip">ESP32-S3 &middot; USB-C</div>
-
             <svg viewBox="0 0 220 340" xmlns="http://www.w3.org/2000/svg">
-              <!-- PCB body (sleeker) -->
-              <rect x="20" y="10" width="180" height="320" rx="8" fill="#1a1a2e" stroke="#2a2a3e" stroke-width="1.5"/>
-
-              <!-- TFT Display -->
-              <rect x="30" y="22" width="160" height="120" rx="4" fill="#0d0d18" stroke="#333" stroke-width="1"/>
-              <text x="110" y="80" text-anchor="middle" fill="#444" font-size="10" font-family="sans-serif">ILI9341 2.8" TFT</text>
-              <text x="110" y="94" text-anchor="middle" fill="#333" font-size="8" font-family="sans-serif">Touch Display</text>
-
-              <!-- ESP32-S3 chip (integrated) -->
-              <rect x="55" y="155" width="110" height="35" rx="4" fill="#1f2937" stroke="#66aaff" stroke-width="1"/>
-              <text x="110" y="174" text-anchor="middle" fill="#66aaff" font-size="9" font-weight="bold" font-family="sans-serif">ESP32-S3</text>
-              <text x="110" y="185" text-anchor="middle" fill="#555" font-size="7" font-family="sans-serif">Integrated on PCB</text>
-
-              <!-- CP2102 -->
-              <rect x="55" y="198" width="50" height="18" rx="3" fill="#1f2937" stroke="#444" stroke-width="0.75"/>
-              <text x="80" y="210" text-anchor="middle" fill="#666" font-size="6.5" font-family="sans-serif">CP2102</text>
-
-              <!-- IP5306 -->
-              <rect x="115" y="198" width="50" height="18" rx="3" fill="#1f2937" stroke="#444" stroke-width="0.75"/>
-              <text x="140" y="210" text-anchor="middle" fill="#666" font-size="6.5" font-family="sans-serif">IP5306</text>
-
-              <!-- BOOT button -->
-              <rect x="38" y="230" width="28" height="14" rx="3" fill="#ff4444" stroke="#cc3333" stroke-width="1"/>
-              <text x="52" y="240" text-anchor="middle" fill="#fff" font-size="6.5" font-weight="bold" font-family="sans-serif">BOOT</text>
-              <!-- BOOT callout arrow -->
-              <line x1="30" y1="237" x2="36" y2="237" stroke="#ff4444" stroke-width="1.5"/>
-              <polygon points="25,237 32,233 32,241" fill="#ff4444"/>
-              <text x="18" y="232" text-anchor="end" fill="#ff6666" font-size="7" font-weight="bold" font-family="sans-serif" transform="rotate(-90,18,240)">BOOT</text>
-
-              <!-- RST button -->
-              <rect x="154" y="230" width="28" height="14" rx="3" fill="#ffaa00" stroke="#cc8800" stroke-width="1"/>
-              <text x="168" y="240" text-anchor="middle" fill="#000" font-size="6" font-weight="bold" font-family="sans-serif">RST</text>
-
-              <!-- USB-C port -->
+              <rect x="20" y="10" width="180" height="320" rx="8" fill="#0e0e1a" stroke="#222" stroke-width="1.5"/>
+              <rect x="30" y="22" width="160" height="120" rx="4" fill="#080812" stroke="#2a2a3e" stroke-width="1"/>
+              <text x="110" y="80" text-anchor="middle" fill="#333" font-size="10" font-family="monospace">ILI9341 2.8" TFT</text>
+              <text x="110" y="94" text-anchor="middle" fill="#282830" font-size="8" font-family="monospace">Touch Display</text>
+              <rect x="55" y="155" width="110" height="35" rx="4" fill="#12121e" stroke="#4488ff" stroke-width="1"/>
+              <text x="110" y="174" text-anchor="middle" fill="#4488ff" font-size="9" font-weight="bold" font-family="monospace">ESP32-S3</text>
+              <text x="110" y="185" text-anchor="middle" fill="#444" font-size="7" font-family="monospace">Integrated on PCB</text>
+              <rect x="55" y="198" width="50" height="18" rx="3" fill="#12121e" stroke="#333" stroke-width="0.75"/>
+              <text x="80" y="210" text-anchor="middle" fill="#555" font-size="6.5" font-family="monospace">CP2102</text>
+              <rect x="115" y="198" width="50" height="18" rx="3" fill="#12121e" stroke="#333" stroke-width="0.75"/>
+              <text x="140" y="210" text-anchor="middle" fill="#555" font-size="6.5" font-family="monospace">IP5306</text>
+              <rect x="38" y="230" width="28" height="14" rx="3" fill="#ff4466" stroke="#cc3344" stroke-width="1"/>
+              <text x="52" y="240" text-anchor="middle" fill="#fff" font-size="6.5" font-weight="bold" font-family="monospace">BOOT</text>
+              <line x1="30" y1="237" x2="36" y2="237" stroke="#ff4466" stroke-width="1.5"/>
+              <polygon points="25,237 32,233 32,241" fill="#ff4466"/>
+              <text x="18" y="232" text-anchor="end" fill="#ff6677" font-size="7" font-weight="bold" font-family="monospace" transform="rotate(-90,18,240)">BOOT</text>
+              <rect x="154" y="230" width="28" height="14" rx="3" fill="#ff9933" stroke="#cc7722" stroke-width="1"/>
+              <text x="168" y="240" text-anchor="middle" fill="#000" font-size="6" font-weight="bold" font-family="monospace">RST</text>
               <rect x="80" y="265" width="60" height="16" rx="6" fill="#00ff88" stroke="#00cc6a" stroke-width="1.5"/>
-              <text x="110" y="276" text-anchor="middle" fill="#000" font-size="7.5" font-weight="bold" font-family="sans-serif">USB-C</text>
-              <!-- USB callout -->
+              <text x="110" y="276" text-anchor="middle" fill="#000" font-size="7.5" font-weight="bold" font-family="monospace">USB-C</text>
               <line x1="110" y1="283" x2="110" y2="295" stroke="#00ff88" stroke-width="1" stroke-dasharray="2,2"/>
-              <text x="110" y="304" text-anchor="middle" fill="#00ff88" font-size="7" font-weight="bold" font-family="sans-serif">DATA + POWER</text>
-
-              <!-- Pogo pin contacts (instead of headers) -->
-              <g fill="#aaa" stroke="#888" stroke-width="0.5">
-                <circle cx="35" cy="155" r="2.5"/>
-                <circle cx="35" cy="165" r="2.5"/>
-                <circle cx="35" cy="175" r="2.5"/>
-                <circle cx="35" cy="185" r="2.5"/>
-                <circle cx="185" cy="155" r="2.5"/>
-                <circle cx="185" cy="165" r="2.5"/>
-                <circle cx="185" cy="175" r="2.5"/>
-                <circle cx="185" cy="185" r="2.5"/>
+              <text x="110" y="304" text-anchor="middle" fill="#00ff88" font-size="7" font-weight="bold" font-family="monospace">DATA + POWER</text>
+              <g fill="#666" stroke="#555" stroke-width="0.5">
+                <circle cx="35" cy="155" r="2.5"/><circle cx="35" cy="165" r="2.5"/>
+                <circle cx="35" cy="175" r="2.5"/><circle cx="35" cy="185" r="2.5"/>
+                <circle cx="185" cy="155" r="2.5"/><circle cx="185" cy="165" r="2.5"/>
+                <circle cx="185" cy="175" r="2.5"/><circle cx="185" cy="185" r="2.5"/>
               </g>
-              <text x="35" y="148" text-anchor="middle" fill="#666" font-size="5.5" font-family="sans-serif">POGO</text>
-              <text x="185" y="148" text-anchor="middle" fill="#666" font-size="5.5" font-family="sans-serif">POGO</text>
-
-              <!-- SD Card slot -->
-              <rect x="140" y="308" width="50" height="18" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-              <text x="165" y="320" text-anchor="middle" fill="#888" font-size="7" font-family="sans-serif">SD Card</text>
-
-              <!-- Soft tactile buttons -->
+              <text x="35" y="148" text-anchor="middle" fill="#444" font-size="5.5" font-family="monospace">POGO</text>
+              <text x="185" y="148" text-anchor="middle" fill="#444" font-size="5.5" font-family="monospace">POGO</text>
+              <rect x="140" y="308" width="50" height="18" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
+              <text x="165" y="320" text-anchor="middle" fill="#555" font-size="7" font-family="monospace">SD Card</text>
               <g>
-                <rect x="35" y="290" width="14" height="14" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-                <rect x="55" y="290" width="14" height="14" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-                <rect x="35" y="310" width="14" height="14" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-                <rect x="55" y="310" width="14" height="14" rx="3" fill="#2d2d44" stroke="#444" stroke-width="1"/>
-                <text x="42" y="299" text-anchor="middle" fill="#555" font-size="5" font-family="sans-serif">&#9650;</text>
-                <text x="62" y="299" text-anchor="middle" fill="#555" font-size="5" font-family="sans-serif">&#9654;</text>
-                <text x="42" y="319" text-anchor="middle" fill="#555" font-size="5" font-family="sans-serif">&#9660;</text>
-                <text x="62" y="319" text-anchor="middle" fill="#555" font-size="5" font-family="sans-serif">OK</text>
+                <rect x="35" y="290" width="14" height="14" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
+                <rect x="55" y="290" width="14" height="14" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
+                <rect x="35" y="310" width="14" height="14" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
+                <rect x="55" y="310" width="14" height="14" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
+                <text x="42" y="299" text-anchor="middle" fill="#444" font-size="5" font-family="monospace">&#9650;</text>
+                <text x="62" y="299" text-anchor="middle" fill="#444" font-size="5" font-family="monospace">&#9654;</text>
+                <text x="42" y="319" text-anchor="middle" fill="#444" font-size="5" font-family="monospace">&#9660;</text>
+                <text x="62" y="319" text-anchor="middle" fill="#444" font-size="5" font-family="monospace">OK</text>
               </g>
-
-              <!-- Battery connector -->
-              <rect x="100" y="315" width="30" height="10" rx="2" fill="#2d2d44" stroke="#ffaa00" stroke-width="0.75"/>
-              <text x="115" y="323" text-anchor="middle" fill="#cc8800" font-size="5" font-family="sans-serif">BAT</text>
+              <rect x="100" y="315" width="30" height="10" rx="2" fill="#16162a" stroke="#ff9933" stroke-width="0.75"/>
+              <text x="115" y="323" text-anchor="middle" fill="#cc7722" font-size="5" font-family="monospace">BAT</text>
             </svg>
-
             <ul class="board-traits">
               <li>Single integrated PCB + shield via pogo pins</li>
-              <li><strong style="color:#ff6666">BOOT btn</strong> on left edge of main board</li>
+              <li><strong style="color:#ff6677">BOOT btn</strong> on left edge of main board</li>
               <li><strong style="color:#00ff88">USB-C</strong> port on bottom edge</li>
               <li>IP5306 battery management built-in</li>
               <li>Soft tactile nav buttons</li>
@@ -402,56 +602,197 @@
 
         </div>
 
-        <!-- Legend -->
         <div class="legend">
-          <div class="legend-item"><div class="legend-swatch" style="background:#ff4444"></div> BOOT button (hold to enter flash mode)</div>
-          <div class="legend-item"><div class="legend-swatch" style="background:#00ff88"></div> USB port (connect here to flash)</div>
-          <div class="legend-item"><div class="legend-swatch" style="background:#ffaa00"></div> RST / Antenna / Power</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff4466"></div> BOOT (hold to enter flash mode)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#00ff88"></div> USB port (connect here)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff9933"></div> RST / Antenna / Power</div>
         </div>
-
       </div>
     </div>
 
     <!-- ==================== Instructions ==================== -->
-    <div class="instructions">
-      <h3>How to Flash</h3>
-      <ol>
-        <li>Connect your ESP32-DIV via USB</li>
-        <li>Click <strong>Flash</strong> on the firmware you want</li>
-        <li>Select the COM/serial port in the popup</li>
-        <li>Wait for the flash to complete (~60 seconds)</li>
-      </ol>
-      <div class="detect-note">
-        <strong>Auto-detect:</strong> The flasher reads your chip ID on connect and
-        picks the correct build for DIV v1 (ESP32) or DIV v2 (ESP32-S3). No manual selection needed.
+    <div class="section-head fade-in" style="margin-top:1.5rem">// how to flash</div>
+
+    <div class="terminal fade-in">
+      <div class="terminal-bar">
+        <span class="terminal-dot r"></span>
+        <span class="terminal-dot y"></span>
+        <span class="terminal-dot g"></span>
+        <span class="terminal-title">flash_guide.sh</span>
       </div>
-      <div class="note">
-        If the device isn't detected, hold the <strong style="color:#ff6666">BOOT</strong> button while
-        plugging in USB, then try again. See diagrams above for button location.
+      <div class="terminal-body">
+        <span class="prompt">$</span> <span class="cmd">connect</span> <span class="comment"># plug in your ESP32-DIV via USB</span><br>
+        <span class="prompt">$</span> <span class="cmd">select_firmware</span> <span class="comment"># click the Flash button above</span><br>
+        <span class="prompt">$</span> <span class="cmd">pick_port</span> <span class="comment"># choose the COM/serial port in the popup</span><br>
+        <span class="prompt">$</span> <span class="cmd">wait --timeout 60s</span> <span class="comment"># flashing takes ~60 seconds</span><br>
+        <span class="prompt">$</span> <span class="cmd">done</span> <span class="comment"># your DIV is ready</span>
+
+        <div class="detect-box">
+          <strong>> auto-detect:</strong> the flasher reads your chip ID on connect and picks
+          the correct build for DIV v1 (ESP32) or DIV v2 (ESP32-S3). No manual selection needed.
+        </div>
+        <div class="boot-box">
+          <strong>> troubleshoot:</strong> if the device isn't detected, hold the
+          <strong>BOOT</strong> button while plugging in USB, then try again. See diagrams above for button location.
+        </div>
       </div>
     </div>
 
   </div>
 
   <footer>
-    Built for the ESP32-DIV community &mdash;
-    <a href="https://github.com/cifertech/ESP32-DIV">CiferTech</a> &middot;
-    <a href="https://github.com/JesseCHale/HaleHound-CYD">HaleHound</a>
+    <div>Built for the ESP32-DIV community</div>
+    <div class="footer-links">
+      <a href="https://github.com/RadDad87/esp32-div-flasher" target="_blank">Flasher Repo</a>
+      <span style="color:#222">|</span>
+      <a href="https://github.com/cifertech/ESP32-DIV" target="_blank">CiferTech</a>
+      <span style="color:#222">|</span>
+      <a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank">HaleHound</a>
+    </div>
   </footer>
 
-  <script>
-    if (!("serial" in navigator)) {
-      document.getElementById("unsupported").classList.add("show");
-      document.getElementById("autoBadge").style.display = "none";
-    }
+</div>
 
-    function toggleBoardId() {
-      const content = document.getElementById("boardContent");
-      const toggle = document.getElementById("boardToggle");
-      const isOpen = content.classList.toggle("open");
-      toggle.textContent = isOpen ? "Hide diagrams" : "Show diagrams";
+<script>
+  // ---- Web Serial check ----
+  if (!("serial" in navigator)) {
+    document.getElementById("unsupported").classList.add("show");
+    document.getElementById("statusDot").className = "status-dot red";
+    document.getElementById("statusText").innerHTML = '<strong style="color:var(--red)">UNSUPPORTED</strong> — use Chrome or Edge desktop';
+  }
+
+  // ---- Board ID toggle ----
+  function toggleBoardId() {
+    const c = document.getElementById("boardContent");
+    const t = document.getElementById("boardToggle");
+    const open = c.classList.toggle("open");
+    t.textContent = open ? "hide" : "show";
+  }
+
+  // ---- Release notes toggle ----
+  function toggleRelease(fw) {
+    const body = document.getElementById(fw + "-notes-body");
+    body.classList.toggle("open");
+  }
+
+  // ---- Matrix rain background ----
+  (function() {
+    const canvas = document.getElementById("matrix");
+    const ctx = canvas.getContext("2d");
+    let w, h, cols, drops;
+    const chars = "01アイウエオカキクケコサシスセソ";
+
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+      cols = Math.floor(w / 18);
+      drops = Array(cols).fill(0).map(() => Math.random() * -100);
     }
-  </script>
+    resize();
+    window.addEventListener("resize", resize);
+
+    function draw() {
+      ctx.fillStyle = "rgba(6,6,11,0.15)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#00ff88";
+      ctx.font = "14px monospace";
+      for (let i = 0; i < cols; i++) {
+        if (drops[i] * 18 > h && Math.random() > 0.975) drops[i] = 0;
+        const ch = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillText(ch, i * 18, drops[i] * 18);
+        drops[i]++;
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+
+  // ---- GitHub API: auto-fetch latest releases ----
+  const REPOS = {
+    cifertech: {
+      api: "https://api.github.com/repos/cifertech/ESP32-DIV/releases/latest",
+      currentVersion: "v1.5.0",
+      versionEl: "cifertech-version",
+      latestEl: "cifertech-latest",
+      notesEl: "cifertech-notes",
+      notesBodyEl: "cifertech-notes-body"
+    },
+    halehound: {
+      api: "https://api.github.com/repos/JesseCHale/HaleHound-CYD/releases/latest",
+      currentVersion: "v3.5.5",
+      versionEl: "halehound-version",
+      latestEl: "halehound-latest",
+      notesEl: "halehound-notes",
+      notesBodyEl: "halehound-notes-body"
+    }
+  };
+
+  async function checkReleases() {
+    for (const [key, repo] of Object.entries(REPOS)) {
+      try {
+        const res = await fetch(repo.api);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const latest = data.tag_name || "";
+
+        // Show release notes
+        const notesDiv = document.getElementById(repo.notesEl);
+        const notesBody = document.getElementById(repo.notesBodyEl);
+        if (data.body) {
+          notesDiv.classList.add("loaded");
+          // Simple markdown-ish rendering
+          let body = data.body
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/^### (.+)$/gm, '<strong style="color:var(--text-bright)">$1</strong>')
+            .replace(/^## (.+)$/gm, '<strong style="color:var(--accent)">$1</strong>')
+            .replace(/^- (.+)$/gm, '<span style="color:var(--accent)">></span> $1')
+            .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text-bright)">$1</strong>')
+            .replace(/`(.+?)`/g, '<code style="color:var(--orange);background:#1a1510;padding:0.1rem 0.3rem;border-radius:3px">$1</code>')
+            .replace(/\n/g, '<br>');
+          notesBody.innerHTML = `<div style="margin-bottom:0.5rem;color:var(--accent)">// ${data.tag_name} — ${new Date(data.published_at).toLocaleDateString()}</div>${body}`;
+        }
+
+        // Compare versions — show update badge if newer
+        const clean = v => v.replace(/^v/i, '').split('.').map(Number);
+        const cur = clean(repo.currentVersion);
+        const lat = clean(latest);
+        let newer = false;
+        for (let i = 0; i < 3; i++) {
+          if ((lat[i]||0) > (cur[i]||0)) { newer = true; break; }
+          if ((lat[i]||0) < (cur[i]||0)) break;
+        }
+
+        if (newer) {
+          const badge = document.getElementById(repo.latestEl);
+          badge.textContent = `${latest} available`;
+          badge.classList.add("show");
+          // Update status bar
+          document.getElementById("statusDot").className = "status-dot yellow";
+          document.getElementById("statusText").innerHTML =
+            `<strong style="color:var(--orange)">UPDATE</strong> — newer firmware available, re-flash to upgrade`;
+        }
+      } catch(e) {
+        // GitHub API rate-limited or unavailable — fail silently
+        const notesBody = document.getElementById(repo.notesBodyEl);
+        notesBody.innerHTML = '<span style="color:#555">// could not reach GitHub API</span>';
+      }
+    }
+  }
+
+  // Fetch repo stars
+  async function fetchStars() {
+    try {
+      const res = await fetch("https://api.github.com/repos/RadDad87/esp32-div-flasher");
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById("repoStars").textContent = data.stargazers_count || 0;
+    } catch(e) {}
+  }
+
+  // Run on load
+  checkReleases();
+  fetchStars();
+</script>
 
 </body>
 </html>
