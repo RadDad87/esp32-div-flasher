@@ -1,28 +1,37 @@
-# ESP32-DIV Web Flasher
+# C3RB3RU5 Web Flasher
 
-Flash firmware to your ESP32-DIV (v1 or v2) directly from the browser using Web Serial.
+Browser-based firmware flasher for the **C3RB3RU5** pentesting firmware on ESP32-DIV hardware.
 
-**Live flasher:** [https://RadDad87.github.io/esp32-div-flasher](https://RadDad87.github.io/esp32-div-flasher)
+Flash directly from your browser — no drivers, no CLI, no setup.
 
-## Supported Firmware
+## Supported Boards
 
-| Firmware | Author | Features |
-|----------|--------|----------|
-| **CiferTech Original** v1.5.0 | [CiferTech](https://github.com/cifertech/ESP32-DIV) | Wi-Fi deauth, beacon spam, probe sniffing, BLE tools, packet monitor, SD logging |
-| **HaleHound** v2.5.0 | [JesseCHale](https://github.com/JesseCHale/HaleHound-CYD) | 30+ attack modules, PMKID capture, Karma AP, NRF24, MouseJack, AirTag suite |
+| Board | Status |
+|-------|--------|
+| ESP32-DIV V2 (ESP32-D0WD-V3, 16MB) | **Ready** |
+| ESP32-DIV V1 | Coming soon |
+| CYD (Cheap Yellow Display) | Coming soon |
 
-## How It Works
+## How to Flash
 
-Uses [ESP Web Tools](https://esphome.github.io/esp-web-tools/) to flash via the browser Web Serial API. No drivers or desktop tools needed.
+1. Visit **[raddad87.github.io/esp32-div-flasher](https://raddad87.github.io/esp32-div-flasher/)**
+2. Connect your ESP32-DIV via USB
+3. Put the board in download mode (hold BOOT, power on, release after 3s)
+4. Click **Install** and select the serial port
+5. Wait for the flash to complete (~30 seconds)
 
-## Requirements
+Requires a Chromium-based browser (Chrome, Edge, Brave) with Web Serial API support.
 
-- Chrome 89+ or Edge 89+ (Web Serial support)
-- USB cable to ESP32-DIV
-- Hold BOOT button if device is not detected
+## What is C3RB3RU5?
+
+C3RB3RU5 is custom pentesting firmware for the ESP32-DIV platform by [CiferTech](https://github.com/cifertech). It includes 40+ security testing modules spanning WiFi, Bluetooth, RF, SubGHz, NFC, and more — built for testing your own equipment.
 
 ## Credits
 
-- [CiferTech](https://github.com/cifertech) — ESP32-DIV hardware and original firmware
-- [JesseCHale](https://github.com/JesseCHale) — HaleHound firmware
-- [ESP Web Tools](https://esphome.github.io/esp-web-tools/) — Browser flashing engine
+- **C3RB3RU5 firmware** — [RadDad87](https://github.com/RadDad87)
+- **ESP32-DIV hardware & base software** — [CiferTech](https://github.com/cifertech)
+- **Web flasher** powered by [ESP Web Tools](https://esphome.github.io/esp-web-tools/)
+
+## License
+
+MIT

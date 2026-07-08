@@ -1,0 +1,17 @@
+{
+  "name": "C3RB3RU5 — ESP32-DIV CYD",
+  "version": "2.0.0-alpha",
+  "home_assistant_domain": "",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "bins/cyd/bootloader.bin", "offset": 4096 },
+        { "path": "bins/cyd/partitions.bin", "offset": 32768 },
+        { "path": "bins/cyd/boot_app0.bin", "offset": 57344 },
+        { "path": "bins/cyd/c3rb3ru5-cyd.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}

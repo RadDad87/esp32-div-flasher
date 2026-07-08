@@ -1,798 +1,839 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32-DIV Web Flasher</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C3RB3RU5 — ESP32 Pentesting Firmware Flasher</title>
   <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #06060b;
-      --bg-card: #0c0c14;
-      --bg-card-hover: #10101a;
-      --border: #1a1a2e;
-      --border-hover: #2a2a4e;
-      --text: #c8c8d0;
-      --text-dim: #666;
-      --text-bright: #f0f0f4;
-      --accent: #00ff88;
-      --accent-dim: #00cc6a;
-      --accent-glow: rgba(0,255,136,0.15);
-      --red: #ff4466;
-      --orange: #ff9933;
-      --blue: #4488ff;
-      --purple: #9966ff;
-      --mono: 'JetBrains Mono', 'Fira Code', monospace;
-      --sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface-alt: #1a1a28;
+      --border: #2a2a3a;
+      --red: #ff2040;
+      --red-dim: #cc1833;
+      --amber: #ff9020;
+      --cyan: #00ccff;
+      --green: #00ff88;
+      --text: #e0e0ee;
+      --text-dim: #8888aa;
+      --glow-red: 0 0 20px rgba(255,32,64,0.3);
+      --glow-cyan: 0 0 15px rgba(0,204,255,0.2);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: var(--sans);
       background: var(--bg);
       color: var(--text);
+      font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
+      line-height: 1.6;
       min-height: 100vh;
-      overflow-x: hidden;
     }
 
-    /* ---- Scanline overlay ---- */
-    body::after {
-      content: '';
-      position: fixed; inset: 0;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-      pointer-events: none; z-index: 9999;
-    }
-
-    /* ---- Matrix rain background ---- */
-    #matrix { position: fixed; inset: 0; z-index: 0; opacity: 0.04; pointer-events: none; }
-
-    .page-wrap { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-
-    /* ---- Header ---- */
-    header {
-      width: 100%; padding: 2.5rem 1rem 2rem; text-align: center;
-      background: linear-gradient(180deg, #0a0a14 0%, var(--bg) 100%);
-      border-bottom: 1px solid var(--border);
-      position: relative; overflow: hidden;
-    }
-    header::before {
-      content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-      width: 600px; height: 300px;
-      background: radial-gradient(ellipse, rgba(0,255,136,0.06) 0%, transparent 70%);
+    .scanline-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
       pointer-events: none;
-    }
-    .logo { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.5rem; }
-    .logo-icon {
-      width: 44px; height: 44px; border-radius: 12px;
-      background: linear-gradient(135deg, #0d2818, #0a1f14);
-      border: 1px solid #1a3d28;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem;
-    }
-    h1 { font-family: var(--mono); font-size: 1.6rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
-    h1 span { color: #444; font-weight: 400; }
-    .subtitle { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.3rem; }
-    .header-meta {
-      display: flex; align-items: center; justify-content: center; gap: 1rem;
-      margin-top: 0.75rem; font-size: 0.7rem; color: #444; font-family: var(--mono);
-    }
-    .header-meta a { color: #555; text-decoration: none; display: flex; align-items: center; gap: 0.3rem; transition: color 0.15s; }
-    .header-meta a:hover { color: var(--accent); }
-
-    .container { max-width: 780px; width: 100%; padding: 1.5rem 1rem 3rem; }
-
-    /* ---- Status bar ---- */
-    .status-bar {
-      display: flex; align-items: center; gap: 0.75rem;
-      padding: 0.7rem 1rem; margin-bottom: 1.5rem;
-      border: 1px solid var(--border); border-radius: 10px;
-      background: var(--bg-card); font-family: var(--mono); font-size: 0.75rem;
-    }
-    .status-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      animation: blink 2s ease-in-out infinite;
-    }
-    .status-dot.green { background: var(--accent); box-shadow: 0 0 8px rgba(0,255,136,0.5); }
-    .status-dot.yellow { background: var(--orange); box-shadow: 0 0 8px rgba(255,153,51,0.5); }
-    .status-dot.red { background: var(--red); box-shadow: 0 0 8px rgba(255,68,102,0.5); }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-    .status-text { color: var(--text-dim); }
-    .status-text strong { color: var(--accent); font-weight: 600; }
-    .status-right { margin-left: auto; color: #333; }
-
-    /* ---- Section headers ---- */
-    .section-head {
-      display: flex; align-items: center; gap: 0.5rem;
-      font-family: var(--mono); font-size: 0.8rem; font-weight: 600;
-      color: var(--text-dim); margin-bottom: 1rem;
-      text-transform: uppercase; letter-spacing: 1px;
-    }
-    .section-head::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
+      z-index: 1000;
     }
 
-    /* ---- Firmware cards ---- */
-    .fw-card {
-      border: 1px solid var(--border); border-radius: 14px;
-      background: var(--bg-card); padding: 1.5rem;
-      margin-bottom: 1rem; transition: all 0.25s;
-      position: relative; overflow: hidden;
-    }
-    .fw-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      opacity: 0; transition: opacity 0.3s;
-    }
-    .fw-card:hover { border-color: var(--border-hover); background: var(--bg-card-hover); }
-    .fw-card:hover::before { opacity: 1; }
-
-    .fw-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.75rem; }
-    .fw-title-group { flex: 1; }
-    .fw-name { font-size: 1.1rem; font-weight: 700; color: var(--text-bright); font-family: var(--mono); }
-    .fw-version-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem; }
-    .fw-version {
-      font-family: var(--mono); font-size: 0.75rem; font-weight: 600;
-      color: var(--accent); background: rgba(0,255,136,0.08);
-      padding: 0.15rem 0.5rem; border-radius: 6px; border: 1px solid rgba(0,255,136,0.15);
-    }
-    .fw-latest {
-      font-family: var(--mono); font-size: 0.6rem; font-weight: 600;
-      color: var(--orange); background: rgba(255,153,51,0.08);
-      padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid rgba(255,153,51,0.15);
-      display: none;
-    }
-    .fw-latest.show { display: inline-block; }
-    .fw-badge {
-      font-family: var(--mono); font-size: 0.6rem; padding: 0.2rem 0.5rem;
-      border-radius: 6px; font-weight: 600; white-space: nowrap;
-    }
-    .fw-badge.official { color: var(--blue); background: rgba(68,136,255,0.1); border: 1px solid rgba(68,136,255,0.2); }
-    .fw-badge.community { color: var(--purple); background: rgba(153,102,255,0.1); border: 1px solid rgba(153,102,255,0.2); }
-
-    .chip-row {
-      display: flex; align-items: center; gap: 0.5rem;
-      margin-bottom: 0.75rem; font-family: var(--mono); font-size: 0.7rem;
-    }
-    .chip-label { color: #555; }
-    .chip-tag {
-      color: var(--blue); font-weight: 600; background: rgba(68,136,255,0.08);
-      padding: 0.1rem 0.4rem; border-radius: 4px; border: 1px solid rgba(68,136,255,0.12);
+    header {
+      text-align: center;
+      padding: 40px 20px 30px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,32,64,0.05) 0%, transparent 100%);
     }
 
-    .fw-desc { font-size: 0.85rem; color: #888; line-height: 1.6; margin-bottom: 1rem; }
-
-    .fw-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
-    .tag {
-      font-family: var(--mono); font-size: 0.65rem; font-weight: 500;
-      padding: 0.2rem 0.5rem; border-radius: 6px;
-      background: #111120; color: #777; border: 1px solid #1a1a2e;
+    .logo-ascii {
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      line-height: 1.15;
+      color: var(--red);
+      white-space: pre;
+      display: inline-block;
+      text-shadow: var(--glow-red);
+      margin-bottom: 12px;
     }
 
-    .fw-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    h1 {
+      font-size: 2.2em;
+      letter-spacing: 6px;
+      font-weight: 700;
+      color: var(--red);
+      text-shadow: var(--glow-red);
+      margin: 8px 0 4px;
+    }
 
-    /* Flash button styling */
-    esp-web-install-button { display: inline-block; }
-    esp-web-install-button button, .flash-btn {
-      font-family: var(--mono); font-weight: 700; font-size: 0.8rem;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
-      color: #000; border: none;
-      padding: 0.65rem 1.6rem; border-radius: 8px;
-      cursor: pointer; transition: all 0.2s;
-      letter-spacing: 0.5px; text-transform: uppercase;
-      box-shadow: 0 0 20px rgba(0,255,136,0.15);
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 0.95em;
+      letter-spacing: 2px;
     }
-    esp-web-install-button button:hover, .flash-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 25px rgba(0,255,136,0.3);
-    }
-    esp-web-install-button button:active, .flash-btn:active { transform: translateY(0); }
 
-    .link-btn {
-      font-family: var(--mono); font-size: 0.75rem; font-weight: 500;
-      color: #555; text-decoration: none; transition: color 0.15s;
-      display: flex; align-items: center; gap: 0.3rem;
+    .version-badge {
+      display: inline-block;
+      background: var(--surface-alt);
+      border: 1px solid var(--red-dim);
+      color: var(--red);
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75em;
+      margin-top: 8px;
+      font-family: monospace;
     }
-    .link-btn:hover { color: var(--accent); }
 
-    /* ---- Release notes (collapsible) ---- */
-    .release-notes {
-      margin-top: 1rem; padding-top: 1rem;
-      border-top: 1px solid var(--border); display: none;
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 30px 20px;
     }
-    .release-notes.loaded { display: block; }
-    .release-toggle {
-      font-family: var(--mono); font-size: 0.7rem; color: #555;
-      background: none; border: 1px solid var(--border); border-radius: 6px;
-      padding: 0.3rem 0.6rem; cursor: pointer; transition: all 0.15s;
-    }
-    .release-toggle:hover { color: var(--accent); border-color: rgba(0,255,136,0.3); }
-    .release-body {
-      display: none; margin-top: 0.75rem; padding: 0.75rem;
-      background: #080810; border-radius: 8px; border: 1px solid var(--border);
-      font-family: var(--mono); font-size: 0.72rem; line-height: 1.7;
-      color: #777; max-height: 200px; overflow-y: auto;
-    }
-    .release-body.open { display: block; }
-    .release-body::-webkit-scrollbar { width: 4px; }
-    .release-body::-webkit-scrollbar-track { background: transparent; }
-    .release-body::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
 
-    /* ---- Board ID section ---- */
-    .board-id {
-      margin-top: 1.5rem; border: 1px solid var(--border); border-radius: 14px;
-      background: var(--bg-card); padding: 1.25rem; overflow: hidden;
+    /* Flash Section */
+    .flash-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 30px;
+      text-align: center;
     }
-    .board-id-header {
-      display: flex; align-items: center; justify-content: space-between;
-      cursor: pointer; user-select: none;
-    }
-    .board-id-header h3 {
-      font-family: var(--mono); font-size: 0.85rem; font-weight: 600; color: var(--text-bright);
-    }
-    .board-id-toggle {
-      font-family: var(--mono); font-size: 0.7rem; color: var(--accent);
-      background: rgba(0,255,136,0.06); padding: 0.3rem 0.7rem;
-      border-radius: 6px; border: 1px solid rgba(0,255,136,0.15);
-      transition: all 0.15s;
-    }
-    .board-id-header:hover .board-id-toggle { background: rgba(0,255,136,0.12); }
 
-    .board-id-content { display: none; margin-top: 1rem; }
-    .board-id-content.open { display: block; }
-
-    .board-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
-    @media (max-width: 640px) { .board-grid { grid-template-columns: 1fr; } }
-
-    .board-panel {
-      border: 1px solid var(--border); border-radius: 10px;
-      background: #080810; padding: 1rem; text-align: center;
+    .flash-section h2 {
+      color: var(--cyan);
+      font-size: 1.3em;
+      margin-bottom: 8px;
     }
-    .board-panel h4 { font-family: var(--mono); font-size: 0.85rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.15rem; }
-    .board-panel .board-chip { font-family: var(--mono); font-size: 0.7rem; color: var(--blue); font-weight: 600; margin-bottom: 0.75rem; }
-    .board-panel svg { width: 100%; max-width: 240px; height: auto; margin: 0 auto 0.75rem; display: block; }
 
-    .board-panel .board-traits { text-align: left; font-size: 0.72rem; color: #777; line-height: 1.8; padding-left: 0.25rem; }
-    .board-panel .board-traits li { list-style: none; }
-    .board-panel .board-traits li::before { content: "> "; color: var(--accent); font-family: var(--mono); font-weight: 700; }
-
-    .legend { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; justify-content: center; }
-    .legend-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.65rem; color: #666; font-family: var(--mono); }
-    .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
-
-    /* ---- Instructions (terminal style) ---- */
-    .terminal {
-      margin-top: 1.5rem; border: 1px solid var(--border); border-radius: 14px;
-      background: var(--bg-card); overflow: hidden;
+    .flash-section p {
+      color: var(--text-dim);
+      margin-bottom: 20px;
+      font-size: 0.9em;
     }
-    .terminal-bar {
-      display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.6rem 1rem; background: #0e0e18; border-bottom: 1px solid var(--border);
-    }
-    .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .terminal-dot.r { background: #ff5f57; }
-    .terminal-dot.y { background: #febc2e; }
-    .terminal-dot.g { background: #28c840; }
-    .terminal-title { margin-left: 0.5rem; font-family: var(--mono); font-size: 0.7rem; color: #444; }
-    .terminal-body { padding: 1.25rem; font-family: var(--mono); font-size: 0.78rem; line-height: 2; color: #777; }
-    .terminal-body .prompt { color: var(--accent); font-weight: 700; }
-    .terminal-body .cmd { color: var(--text-bright); }
-    .terminal-body .comment { color: #444; }
-    .terminal-body .warn { color: var(--orange); }
-    .terminal-body .highlight { color: var(--red); font-weight: 700; }
 
-    .detect-box {
-      margin-top: 1rem; padding: 0.75rem; border-radius: 8px;
-      background: rgba(0,255,136,0.04); border: 1px solid rgba(0,255,136,0.1);
-      font-family: var(--mono); font-size: 0.72rem; color: #66cc88; line-height: 1.6;
+    .flash-targets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
     }
-    .detect-box strong { color: var(--accent); }
-    .boot-box {
-      margin-top: 0.5rem; padding: 0.75rem; border-radius: 8px;
-      background: rgba(255,153,51,0.04); border: 1px solid rgba(255,153,51,0.1);
-      font-family: var(--mono); font-size: 0.72rem; color: #bb8844; line-height: 1.6;
-    }
-    .boot-box strong { color: var(--red); }
 
-    /* ---- Unsupported banner ---- */
-    .unsupported {
-      display: none; text-align: center; padding: 1.5rem;
-      background: rgba(255,68,102,0.05); border: 1px solid rgba(255,68,102,0.15);
-      border-radius: 10px; margin-bottom: 1.5rem;
-      font-family: var(--mono); font-size: 0.8rem; color: var(--red);
+    .flash-card {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: left;
+      transition: border-color 0.2s;
     }
-    .unsupported.show { display: block; }
 
-    /* ---- Footer ---- */
-    footer {
-      width: 100%; padding: 2rem 1rem; text-align: center;
-      border-top: 1px solid var(--border); background: #08080d;
-      font-family: var(--mono); font-size: 0.7rem; color: #333;
+    .flash-card:hover {
+      border-color: var(--red-dim);
     }
-    footer a { color: #444; text-decoration: none; transition: color 0.15s; }
-    footer a:hover { color: var(--accent); }
-    .footer-links { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 0.5rem; }
 
-    /* ---- Loading skeleton ---- */
-    .skeleton {
-      background: linear-gradient(90deg, var(--bg-card) 25%, #141420 50%, var(--bg-card) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
+    .flash-card h3 {
+      color: var(--amber);
+      font-size: 1em;
+      margin-bottom: 4px;
+    }
+
+    .flash-card .chip {
+      display: inline-block;
+      font-size: 0.7em;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-bottom: 8px;
+    }
+
+    .chip-esp32  { background: #1a3a1a; color: var(--green); border: 1px solid #2a5a2a; }
+    .chip-s2     { background: #1a2a3a; color: var(--cyan);  border: 1px solid #2a4a5a; }
+    .chip-s3     { background: #3a1a3a; color: #ff88ff;      border: 1px solid #5a2a5a; }
+    .chip-c3     { background: #3a3a1a; color: #ffff88;      border: 1px solid #5a5a2a; }
+
+    .flash-card .desc {
+      color: var(--text-dim);
+      font-size: 0.82em;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .flash-card esp-web-install-button {
+      display: block;
+    }
+
+    esp-web-install-button button,
+    .flash-card button {
+      background: var(--red);
+      color: white;
+      border: none;
+      padding: 8px 20px;
       border-radius: 6px;
-    }
-    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-    /* ---- Responsive ---- */
-    @media (max-width: 640px) {
-      h1 { font-size: 1.3rem; }
-      .container { padding: 1rem 0.75rem 2rem; }
-      .fw-card { padding: 1.1rem; }
-      .fw-header { flex-direction: column; gap: 0.5rem; }
-      .header-meta { flex-wrap: wrap; }
-      .status-bar { flex-wrap: wrap; }
-      .fw-actions { gap: 0.5rem; }
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85em;
+      letter-spacing: 1px;
+      width: 100%;
+      transition: background 0.2s, box-shadow 0.2s;
     }
 
-    /* ---- Animations ---- */
-    .fade-in {
-      opacity: 0; transform: translateY(12px);
-      animation: fadeUp 0.5s ease forwards;
+    esp-web-install-button button:hover,
+    .flash-card button:hover {
+      background: var(--red-dim);
+      box-shadow: var(--glow-red);
     }
-    @keyframes fadeUp {
-      to { opacity: 1; transform: translateY(0); }
+
+    .requirements {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-top: 16px;
+      text-align: left;
     }
-    .fw-card:nth-child(2) { animation-delay: 0.1s; }
-    .fw-card:nth-child(3) { animation-delay: 0.2s; }
+
+    .requirements h4 {
+      color: var(--amber);
+      font-size: 0.85em;
+      margin-bottom: 6px;
+    }
+
+    .requirements ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .requirements li {
+      color: var(--text-dim);
+      font-size: 0.82em;
+      padding: 3px 0;
+    }
+
+    .requirements li::before {
+      content: '▸ ';
+      color: var(--red);
+    }
+
+    /* Module Grid */
+    .modules-section h2 {
+      color: var(--red);
+      font-size: 1.3em;
+      margin-bottom: 16px;
+      text-align: center;
+      letter-spacing: 3px;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+    }
+
+    .module-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      transition: border-color 0.2s, transform 0.1s;
+    }
+
+    .module-card:hover {
+      border-color: var(--red-dim);
+      transform: translateY(-1px);
+    }
+
+    .module-card .module-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .module-icon {
+      font-size: 1.2em;
+      width: 28px;
+      text-align: center;
+    }
+
+    .module-card h3 {
+      font-size: 0.9em;
+      color: var(--text);
+    }
+
+    .module-card .tag {
+      display: inline-block;
+      font-size: 0.65em;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      margin-left: auto;
+    }
+
+    .tag-wifi     { background: #1a2a1a; color: var(--green); }
+    .tag-ble      { background: #1a1a3a; color: #8888ff; }
+    .tag-subghz   { background: #3a2a1a; color: var(--amber); }
+    .tag-rf       { background: #2a1a2a; color: #cc88ff; }
+    .tag-sigint   { background: #3a1a1a; color: var(--red); }
+    .tag-recon    { background: #1a3a3a; color: var(--cyan); }
+    .tag-nfc      { background: #2a2a1a; color: #cccc44; }
+
+    .module-card .module-desc {
+      color: var(--text-dim);
+      font-size: 0.78em;
+      line-height: 1.5;
+    }
+
+    /* Hardware Section */
+    .hardware-section {
+      margin-top: 30px;
+    }
+
+    .hardware-section h2 {
+      color: var(--amber);
+      font-size: 1.2em;
+      text-align: center;
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+    }
+
+    .hw-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82em;
+    }
+
+    .hw-table th {
+      background: var(--surface-alt);
+      color: var(--cyan);
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .hw-table td {
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+
+    .hw-table tr:hover td {
+      color: var(--text);
+      background: rgba(255,32,64,0.03);
+    }
+
+    .hw-status {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .hw-required { background: var(--red); }
+    .hw-optional { background: var(--amber); }
+    .hw-builtin  { background: var(--green); }
+
+    /* Credits */
+    .credits {
+      margin-top: 40px;
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .credits h3 {
+      color: var(--text-dim);
+      font-size: 0.9em;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    .credits-grid {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    .credit-item {
+      text-align: center;
+    }
+
+    .credit-item a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+
+    .credit-item a:hover { text-decoration: underline; }
+
+    .credit-item .credit-role {
+      color: var(--text-dim);
+      font-size: 0.75em;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .credit-item .credit-links {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.75em;
+    }
+
+    .credit-item .credit-links a {
+      color: var(--amber);
+      text-decoration: none;
+    }
+
+    .credit-item .credit-links a:hover { text-decoration: underline; }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-dim);
+      font-size: 0.75em;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+
+    footer a {
+      color: var(--red);
+      text-decoration: none;
+    }
+
+    /* Warning Banner */
+    .warning-banner {
+      background: rgba(255,144,32,0.08);
+      border: 1px solid rgba(255,144,32,0.3);
+      border-radius: 8px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .warning-banner strong {
+      color: var(--amber);
+    }
+
+    .warning-banner span {
+      color: var(--text-dim);
+      font-size: 0.85em;
+    }
+
+    @media (max-width: 600px) {
+      .logo-ascii { font-size: 6px; }
+      h1 { font-size: 1.5em; letter-spacing: 3px; }
+      .flash-targets { grid-template-columns: 1fr; }
+      .module-grid { grid-template-columns: 1fr; }
+      .credits-grid { flex-direction: column; gap: 16px; }
+    }
   </style>
 </head>
 <body>
 
-<canvas id="matrix"></canvas>
+<div class="scanline-overlay"></div>
 
-<div class="page-wrap">
+<header>
+<pre class="logo-ascii">
+     ██████╗██████╗ ██████╗ ██████╗ ██████╗ ██████╗ ██╗   ██╗███████╗
+    ██╔════╝╚════██╗██╔══██╗██╔══██╗╚════██╗██╔══██╗██║   ██║██╔════╝
+    ██║      █████╔╝██████╔╝██████╔╝ █████╔╝██████╔╝██║   ██║███████╗
+    ██║      ╚═══██╗██╔══██╗██╔══██╗ ╚═══██╗██╔══██╗██║   ██║╚════██║
+    ╚██████╗██████╔╝██║  ██║██████╔╝██████╔╝██║  ██║╚██████╔╝███████║
+     ╚═════╝╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝
+</pre>
+  <h1>C3RB3RU5</h1>
+  <div class="subtitle">CUSTOM FIRMWARE FOR CIFERTECH ESP32-DIV</div>
+  <div class="version-badge">v2.0.0-alpha · 72 modules · 17 domains</div>
+</header>
 
-  <header>
-    <div class="logo">
-      <div class="logo-icon">&#9889;</div>
-      <h1>ESP32-DIV <span>Web Flasher</span></h1>
-    </div>
-    <p class="subtitle">Flash firmware to your ESP32-DIV directly from the browser</p>
-    <div class="header-meta">
-      <a href="https://github.com/RadDad87/esp32-div-flasher" target="_blank">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        RadDad87
-      </a>
-      <span>|</span>
-      <span id="repoStars">--</span> stars
-    </div>
-  </header>
+<div class="container">
 
-  <div class="container">
-
-    <!-- Unsupported browser -->
-    <div class="unsupported" id="unsupported">
-      > Web Serial not supported<br>
-      > Use Chrome or Edge (desktop) to flash firmware
-    </div>
-
-    <!-- Status bar -->
-    <div class="status-bar fade-in" id="statusBar">
-      <span class="status-dot green" id="statusDot"></span>
-      <span class="status-text" id="statusText">
-        <strong>READY</strong> &mdash; auto-detect enabled, plug in your DIV and flash
-      </span>
-      <span class="status-right" id="statusRight">v2.0</span>
-    </div>
-
-    <!-- ==================== Firmware ==================== -->
-    <div class="section-head fade-in">// firmware</div>
-
-    <!-- CiferTech -->
-    <div class="fw-card fade-in" id="card-cifertech">
-      <div class="fw-header">
-        <div class="fw-title-group">
-          <div class="fw-name">CiferTech Original</div>
-          <div class="fw-version-row">
-            <span class="fw-version" id="cifertech-version">v1.5.0</span>
-            <span class="fw-latest" id="cifertech-latest"></span>
-          </div>
-        </div>
-        <span class="fw-badge official">OFFICIAL</span>
-      </div>
-      <div class="chip-row">
-        <span class="chip-label">targets:</span>
-        <span class="chip-tag">ESP32 (DIV v1)</span>
-        <span class="chip-tag">ESP32-S3 (DIV v2)</span>
-      </div>
-      <p class="fw-desc">
-        Official ESP32-DIV firmware by CiferTech. Wi-Fi deauth, beacon spam,
-        probe sniffing, BLE tools, packet monitor with PCAP logging, and OTA updates via SD.
-        V2 adds touch calibration and serial monitor.
-      </p>
-      <div class="fw-tags">
-        <span class="tag">Wi-Fi</span><span class="tag">BLE</span>
-        <span class="tag">Deauth</span><span class="tag">Beacon Spam</span>
-        <span class="tag">Packet Monitor</span><span class="tag">SD Logging</span>
-      </div>
-      <div class="fw-actions">
-        <esp-web-install-button manifest="manifests/cifertech.json">
-          <button slot="activate" class="flash-btn">&#9889; Flash</button>
-        </esp-web-install-button>
-        <a href="https://github.com/cifertech/ESP32-DIV" target="_blank" class="link-btn">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          Source
-        </a>
-        <button class="release-toggle" onclick="toggleRelease('cifertech')">Release notes</button>
-      </div>
-      <div class="release-notes" id="cifertech-notes">
-        <div class="release-body" id="cifertech-notes-body">Loading release notes...</div>
-      </div>
-    </div>
-
-    <!-- HaleHound -->
-    <div class="fw-card fade-in" id="card-halehound">
-      <div class="fw-header">
-        <div class="fw-title-group">
-          <div class="fw-name">HaleHound</div>
-          <div class="fw-version-row">
-            <span class="fw-version" id="halehound-version">v3.5.5</span>
-            <span class="fw-latest" id="halehound-latest"></span>
-          </div>
-        </div>
-        <span class="fw-badge community">COMMUNITY</span>
-      </div>
-      <div class="chip-row">
-        <span class="chip-label">targets:</span>
-        <span class="chip-tag">ESP32 (DIV v1)</span>
-        <span class="chip-tag">ESP32-S3 (DIV v2)</span>
-      </div>
-      <p class="fw-desc">
-        Ground-up rewrite with 30+ attack modules. EAPOL/PMKID capture,
-        Karma AP, NRF24 sniffer, MouseJack, AirTag suite, BLE Predator
-        honeypot, jam detection, and Airoha BLE exploit. Single FULL.bin flash.
-      </p>
-      <div class="fw-tags">
-        <span class="tag">Wi-Fi</span><span class="tag">BLE</span>
-        <span class="tag">NRF24</span><span class="tag">Sub-GHz</span>
-        <span class="tag">PMKID</span><span class="tag">Karma</span>
-        <span class="tag">MouseJack</span>
-      </div>
-      <div class="fw-actions">
-        <esp-web-install-button manifest="manifests/halehound.json">
-          <button slot="activate" class="flash-btn">&#9889; Flash</button>
-        </esp-web-install-button>
-        <a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank" class="link-btn">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          Source
-        </a>
-        <button class="release-toggle" onclick="toggleRelease('halehound')">Release notes</button>
-      </div>
-      <div class="release-notes" id="halehound-notes">
-        <div class="release-body" id="halehound-notes-body">Loading release notes...</div>
-      </div>
-    </div>
-
-    <!-- ==================== Board ID ==================== -->
-    <div class="section-head fade-in" style="margin-top:1.5rem">// board identification</div>
-
-    <div class="board-id fade-in">
-      <div class="board-id-header" onclick="toggleBoardId()">
-        <h3>> which_board_do_i_have()</h3>
-        <span class="board-id-toggle" id="boardToggle">show</span>
-      </div>
-      <div class="board-id-content" id="boardContent">
-        <p style="font-family:var(--mono); font-size:0.72rem; color:#555; margin-bottom:0.75rem;">
-          // Don't worry &mdash; the flasher auto-detects your chip. But here's how to tell them apart:
-        </p>
-
-        <div class="board-grid">
-
-          <!-- DIV v1 -->
-          <div class="board-panel">
-            <h4>ESP32-DIV v1</h4>
-            <div class="board-chip">ESP32 &middot; Micro USB</div>
-            <svg viewBox="0 0 220 340" xmlns="http://www.w3.org/2000/svg">
-              <rect x="20" y="10" width="180" height="320" rx="8" fill="#0e0e1a" stroke="#222" stroke-width="1.5"/>
-              <rect x="35" y="25" width="150" height="112" rx="4" fill="#080812" stroke="#2a2a3e" stroke-width="1"/>
-              <text x="110" y="80" text-anchor="middle" fill="#333" font-size="10" font-family="monospace">ILI9341 2.8" TFT</text>
-              <text x="110" y="94" text-anchor="middle" fill="#282830" font-size="8" font-family="monospace">Touch Display</text>
-              <rect x="40" y="150" width="140" height="70" rx="4" fill="#12121e" stroke="#3a3a5e" stroke-width="1"/>
-              <text x="110" y="178" text-anchor="middle" fill="#4488ff" font-size="9" font-weight="bold" font-family="monospace">ESP32 DevKit</text>
-              <text x="110" y="192" text-anchor="middle" fill="#444" font-size="7" font-family="monospace">CP2102 onboard</text>
-              <rect x="48" y="158" width="24" height="12" rx="3" fill="#ff4466" stroke="#cc3344" stroke-width="1"/>
-              <text x="60" y="166" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold" font-family="monospace">BOOT</text>
-              <line x1="60" y1="155" x2="60" y2="143" stroke="#ff4466" stroke-width="1" stroke-dasharray="2,2"/>
-              <text x="60" y="142" text-anchor="middle" fill="#ff6677" font-size="7" font-weight="bold" font-family="monospace">BOOT</text>
-              <rect x="148" y="158" width="24" height="12" rx="3" fill="#ff9933" stroke="#cc7722" stroke-width="1"/>
-              <text x="160" y="166" text-anchor="middle" fill="#000" font-size="5.5" font-weight="bold" font-family="monospace">EN/RST</text>
-              <g fill="#333" stroke="#444" stroke-width="0.5">
-                <rect x="28" y="155" width="6" height="60" rx="1"/>
-                <rect x="186" y="155" width="6" height="60" rx="1"/>
-              </g>
-              <rect x="85" y="222" width="50" height="14" rx="3" fill="#00ff88" stroke="#00cc6a" stroke-width="1.5"/>
-              <text x="110" y="232" text-anchor="middle" fill="#000" font-size="7" font-weight="bold" font-family="monospace">MICRO USB</text>
-              <line x1="110" y1="238" x2="110" y2="252" stroke="#00ff88" stroke-width="1" stroke-dasharray="2,2"/>
-              <text x="110" y="261" text-anchor="middle" fill="#00ff88" font-size="7" font-weight="bold" font-family="monospace">DATA + POWER</text>
-              <rect x="140" y="255" width="50" height="25" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
-              <text x="165" y="270" text-anchor="middle" fill="#555" font-size="7" font-family="monospace">SD Card</text>
-              <g>
-                <circle cx="50" cy="270" r="7" fill="#16162a" stroke="#333" stroke-width="1"/>
-                <circle cx="50" cy="290" r="7" fill="#16162a" stroke="#333" stroke-width="1"/>
-                <circle cx="50" cy="310" r="7" fill="#16162a" stroke="#333" stroke-width="1"/>
-                <text x="50" y="272" text-anchor="middle" fill="#444" font-size="6" font-family="monospace">&#9650;</text>
-                <text x="50" y="293" text-anchor="middle" fill="#444" font-size="7" font-family="monospace">OK</text>
-                <text x="50" y="313" text-anchor="middle" fill="#444" font-size="6" font-family="monospace">&#9660;</text>
-              </g>
-              <circle cx="175" cy="300" r="10" fill="none" stroke="#ff9933" stroke-width="1.5"/>
-              <circle cx="175" cy="300" r="3" fill="#ff9933"/>
-              <text x="175" y="318" text-anchor="middle" fill="#555" font-size="6" font-family="monospace">Antenna</text>
-            </svg>
-            <ul class="board-traits">
-              <li>Sandwich-style PCB (main + shield)</li>
-              <li><strong style="color:#ff6677">BOOT btn</strong> on ESP32 DevKit module</li>
-              <li><strong style="color:#00ff88">Micro USB</strong> on DevKit (bottom board)</li>
-              <li>Pin headers connect boards</li>
-              <li>3x NRF24 + CC1101 on shield</li>
-            </ul>
-          </div>
-
-          <!-- DIV v2 -->
-          <div class="board-panel">
-            <h4>ESP32-DIV v2</h4>
-            <div class="board-chip">ESP32-S3 &middot; USB-C</div>
-            <svg viewBox="0 0 220 340" xmlns="http://www.w3.org/2000/svg">
-              <rect x="20" y="10" width="180" height="320" rx="8" fill="#0e0e1a" stroke="#222" stroke-width="1.5"/>
-              <rect x="30" y="22" width="160" height="120" rx="4" fill="#080812" stroke="#2a2a3e" stroke-width="1"/>
-              <text x="110" y="80" text-anchor="middle" fill="#333" font-size="10" font-family="monospace">ILI9341 2.8" TFT</text>
-              <text x="110" y="94" text-anchor="middle" fill="#282830" font-size="8" font-family="monospace">Touch Display</text>
-              <rect x="55" y="155" width="110" height="35" rx="4" fill="#12121e" stroke="#4488ff" stroke-width="1"/>
-              <text x="110" y="174" text-anchor="middle" fill="#4488ff" font-size="9" font-weight="bold" font-family="monospace">ESP32-S3</text>
-              <text x="110" y="185" text-anchor="middle" fill="#444" font-size="7" font-family="monospace">Integrated on PCB</text>
-              <rect x="55" y="198" width="50" height="18" rx="3" fill="#12121e" stroke="#333" stroke-width="0.75"/>
-              <text x="80" y="210" text-anchor="middle" fill="#555" font-size="6.5" font-family="monospace">CP2102</text>
-              <rect x="115" y="198" width="50" height="18" rx="3" fill="#12121e" stroke="#333" stroke-width="0.75"/>
-              <text x="140" y="210" text-anchor="middle" fill="#555" font-size="6.5" font-family="monospace">IP5306</text>
-              <rect x="38" y="230" width="28" height="14" rx="3" fill="#ff4466" stroke="#cc3344" stroke-width="1"/>
-              <text x="52" y="240" text-anchor="middle" fill="#fff" font-size="6.5" font-weight="bold" font-family="monospace">BOOT</text>
-              <line x1="30" y1="237" x2="36" y2="237" stroke="#ff4466" stroke-width="1.5"/>
-              <polygon points="25,237 32,233 32,241" fill="#ff4466"/>
-              <text x="18" y="232" text-anchor="end" fill="#ff6677" font-size="7" font-weight="bold" font-family="monospace" transform="rotate(-90,18,240)">BOOT</text>
-              <rect x="154" y="230" width="28" height="14" rx="3" fill="#ff9933" stroke="#cc7722" stroke-width="1"/>
-              <text x="168" y="240" text-anchor="middle" fill="#000" font-size="6" font-weight="bold" font-family="monospace">RST</text>
-              <rect x="80" y="265" width="60" height="16" rx="6" fill="#00ff88" stroke="#00cc6a" stroke-width="1.5"/>
-              <text x="110" y="276" text-anchor="middle" fill="#000" font-size="7.5" font-weight="bold" font-family="monospace">USB-C</text>
-              <line x1="110" y1="283" x2="110" y2="295" stroke="#00ff88" stroke-width="1" stroke-dasharray="2,2"/>
-              <text x="110" y="304" text-anchor="middle" fill="#00ff88" font-size="7" font-weight="bold" font-family="monospace">DATA + POWER</text>
-              <g fill="#666" stroke="#555" stroke-width="0.5">
-                <circle cx="35" cy="155" r="2.5"/><circle cx="35" cy="165" r="2.5"/>
-                <circle cx="35" cy="175" r="2.5"/><circle cx="35" cy="185" r="2.5"/>
-                <circle cx="185" cy="155" r="2.5"/><circle cx="185" cy="165" r="2.5"/>
-                <circle cx="185" cy="175" r="2.5"/><circle cx="185" cy="185" r="2.5"/>
-              </g>
-              <text x="35" y="148" text-anchor="middle" fill="#444" font-size="5.5" font-family="monospace">POGO</text>
-              <text x="185" y="148" text-anchor="middle" fill="#444" font-size="5.5" font-family="monospace">POGO</text>
-              <rect x="140" y="308" width="50" height="18" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
-              <text x="165" y="320" text-anchor="middle" fill="#555" font-size="7" font-family="monospace">SD Card</text>
-              <g>
-                <rect x="35" y="290" width="14" height="14" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
-                <rect x="55" y="290" width="14" height="14" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
-                <rect x="35" y="310" width="14" height="14" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
-                <rect x="55" y="310" width="14" height="14" rx="3" fill="#16162a" stroke="#333" stroke-width="1"/>
-                <text x="42" y="299" text-anchor="middle" fill="#444" font-size="5" font-family="monospace">&#9650;</text>
-                <text x="62" y="299" text-anchor="middle" fill="#444" font-size="5" font-family="monospace">&#9654;</text>
-                <text x="42" y="319" text-anchor="middle" fill="#444" font-size="5" font-family="monospace">&#9660;</text>
-                <text x="62" y="319" text-anchor="middle" fill="#444" font-size="5" font-family="monospace">OK</text>
-              </g>
-              <rect x="100" y="315" width="30" height="10" rx="2" fill="#16162a" stroke="#ff9933" stroke-width="0.75"/>
-              <text x="115" y="323" text-anchor="middle" fill="#cc7722" font-size="5" font-family="monospace">BAT</text>
-            </svg>
-            <ul class="board-traits">
-              <li>Single integrated PCB + shield via pogo pins</li>
-              <li><strong style="color:#ff6677">BOOT btn</strong> on left edge of main board</li>
-              <li><strong style="color:#00ff88">USB-C</strong> port on bottom edge</li>
-              <li>IP5306 battery management built-in</li>
-              <li>Soft tactile nav buttons</li>
-            </ul>
-          </div>
-
-        </div>
-
-        <div class="legend">
-          <div class="legend-item"><div class="legend-swatch" style="background:#ff4466"></div> BOOT (hold to enter flash mode)</div>
-          <div class="legend-item"><div class="legend-swatch" style="background:#00ff88"></div> USB port (connect here)</div>
-          <div class="legend-item"><div class="legend-swatch" style="background:#ff9933"></div> RST / Antenna / Power</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ==================== Instructions ==================== -->
-    <div class="section-head fade-in" style="margin-top:1.5rem">// how to flash</div>
-
-    <div class="terminal fade-in">
-      <div class="terminal-bar">
-        <span class="terminal-dot r"></span>
-        <span class="terminal-dot y"></span>
-        <span class="terminal-dot g"></span>
-        <span class="terminal-title">flash_guide.sh</span>
-      </div>
-      <div class="terminal-body">
-        <span class="prompt">$</span> <span class="cmd">connect</span> <span class="comment"># plug in your ESP32-DIV via USB</span><br>
-        <span class="prompt">$</span> <span class="cmd">select_firmware</span> <span class="comment"># click the Flash button above</span><br>
-        <span class="prompt">$</span> <span class="cmd">pick_port</span> <span class="comment"># choose the COM/serial port in the popup</span><br>
-        <span class="prompt">$</span> <span class="cmd">wait --timeout 60s</span> <span class="comment"># flashing takes ~60 seconds</span><br>
-        <span class="prompt">$</span> <span class="cmd">done</span> <span class="comment"># your DIV is ready</span>
-
-        <div class="detect-box">
-          <strong>> auto-detect:</strong> the flasher reads your chip ID on connect and picks
-          the correct build for DIV v1 (ESP32) or DIV v2 (ESP32-S3). No manual selection needed.
-        </div>
-        <div class="boot-box">
-          <strong>> troubleshoot:</strong> if the device isn't detected, hold the
-          <strong>BOOT</strong> button while plugging in USB, then try again. See diagrams above for button location.
-        </div>
-      </div>
-    </div>
-
+  <div class="warning-banner">
+    <strong>FOR AUTHORIZED SECURITY TESTING ONLY</strong><br>
+    <span>This firmware is designed for testing your own equipment and networks. Always obtain proper authorization before testing any system you do not own.</span>
   </div>
 
-  <footer>
-    <div>Built for the ESP32-DIV community</div>
-    <div class="footer-links">
-      <a href="https://github.com/RadDad87/esp32-div-flasher" target="_blank">Flasher Repo</a>
-      <span style="color:#222">|</span>
-      <a href="https://github.com/cifertech/ESP32-DIV" target="_blank">CiferTech</a>
-      <span style="color:#222">|</span>
-      <a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank">HaleHound</a>
+  <!-- ═══ FLASH SECTION ═══ -->
+  <div class="flash-section">
+    <h2>FLASH FIRMWARE</h2>
+    <p>Select your ESP32-DIV board version below. Connect via USB and click Install. Chrome or Edge required (Web Serial API).</p>
+
+    <div class="flash-targets">
+
+      <div class="flash-card">
+        <h3>ESP32-DIV V1.x</h3>
+        <span class="chip chip-esp32">ESP32-WROOM-32 · 4MB</span>
+        <div class="desc">
+          Original CiferTech board. ESP32-WROOM-32 with ILI9341 TFT, 1x NRF24L01, 1x CC1101 Sub-GHz, button navigation. Full 72-module suite across all 17 domains.
+        </div>
+        <esp-web-install-button manifest="manifests/c3rb3ru5-v1.json">
+          <button slot="activate">INSTALL V1</button>
+        </esp-web-install-button>
+      </div>
+
+      <div class="flash-card">
+        <h3>ESP32-DIV V2.0</h3>
+        <span class="chip chip-esp32">ESP32-D0WD-V3 · 16MB</span>
+        <div class="desc">
+          Upgraded CiferTech board. ESP32-D0WD-V3 with ILI9341 touchscreen, 3x NRF24L01, 1x CC1101, 4x WS2812B RGB LEDs, buzzer, IP5306 power management, pogo-pin stack.
+        </div>
+        <esp-web-install-button manifest="manifests/c3rb3ru5-v2.json">
+          <button slot="activate">INSTALL V2</button>
+        </esp-web-install-button>
+      </div>
+
+      <div class="flash-card">
+        <h3>ESP32-DIV CYD</h3>
+        <span class="chip chip-esp32">ESP32-2432S028</span>
+        <div class="desc">
+          CiferTech's CYD (Cheap Yellow Display) build. ESP32 with 2.8" resistive touchscreen, SD card slot, RGB LED. CYD-specific pin mappings and touch controls.
+        </div>
+        <esp-web-install-button manifest="manifests/c3rb3ru5-cyd.json">
+          <button slot="activate">INSTALL CYD</button>
+        </esp-web-install-button>
+      </div>
+
     </div>
-  </footer>
+
+    <div class="requirements">
+      <h4>REQUIREMENTS</h4>
+      <ul>
+        <li>Chrome 89+ or Edge 89+ (Web Serial API required)</li>
+        <li>CiferTech ESP32-DIV V1.x, V2.0, or compatible CYD board</li>
+        <li>USB cable — V1 uses CH340/CP2102 serial, V2 uses CP210x serial</li>
+        <li>Hold BOOT during flash if board doesn't auto-enter download mode</li>
+        <li>V2: enter download mode via BOOT+RESET sequence</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ═══ MODULE LIST ═══ -->
+  <div class="modules-section">
+    <h2>MODULE ARSENAL</h2>
+    <div class="module-grid">
+
+      <!-- WiFi Modules -->
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">📡</span>
+          <h3>WiFi Packet Monitor</h3>
+          <span class="tag tag-wifi">WiFi</span>
+        </div>
+        <div class="module-desc">Real-time 802.11 traffic visualization. Channel-hopping packet capture with frame type breakdown and traffic density graph.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🔓</span>
+          <h3>WiFi Scanner</h3>
+          <span class="tag tag-wifi">WiFi</span>
+        </div>
+        <div class="module-desc">Full AP enumeration with SSID, BSSID, channel, RSSI, and encryption type. Sorted display with signal strength indicators.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">⚡</span>
+          <h3>Beacon Spammer</h3>
+          <span class="tag tag-wifi">WiFi</span>
+        </div>
+        <div class="module-desc">Broadcast custom beacon frames. Flood mode for stress testing client-side WiFi stacks. Customizable SSID lists and timing.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">💀</span>
+          <h3>Deauth Detector</h3>
+          <span class="tag tag-wifi">WiFi</span>
+        </div>
+        <div class="module-desc">Passive detection of 802.11 deauthentication and disassociation floods. Real-time alert when deauth attacks are in progress.</div>
+      </div>
+
+      <!-- BLE Modules -->
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🦷</span>
+          <h3>BLE Scanner</h3>
+          <span class="tag tag-ble">BLE</span>
+        </div>
+        <div class="module-desc">NimBLE-powered Bluetooth Low Energy enumeration. Device names, UUIDs, manufacturer data, RSSI tracking, and Apple device detection.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">💳</span>
+          <h3>Skimmer Detector</h3>
+          <span class="tag tag-ble">BLE</span>
+        </div>
+        <div class="module-desc">Detect BLE-based credit card skimmers at ATMs and gas pumps. 22 known module patterns, OUI matching, suspicious UUID detection. Threat-scored results.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🔔</span>
+          <h3>BLE Spam</h3>
+          <span class="tag tag-ble">BLE</span>
+        </div>
+        <div class="module-desc">Apple/Samsung/Google notification spam for BLE stack testing. Swift Pair, Fast Pair, and proximity pairing protocol simulation.</div>
+      </div>
+
+      <!-- Detection Modules -->
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">📹</span>
+          <h3>Camera Detector</h3>
+          <span class="tag tag-recon">Recon</span>
+        </div>
+        <div class="module-desc">Find hidden security cameras via WiFi OUI, SSID patterns, and BLE advertisements. 21 vendor fingerprints with RSSI-based distance estimation.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🚁</span>
+          <h3>Drone Detector</h3>
+          <span class="tag tag-recon">Recon</span>
+        </div>
+        <div class="module-desc">Passive drone detection using WiFi signatures and ASTM F3411 BLE Remote ID parsing. Extracts UAS ID, GPS position, altitude, and pilot location.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">👤</span>
+          <h3>Presence Radar</h3>
+          <span class="tag tag-recon">Recon</span>
+        </div>
+        <div class="module-desc">Passive people detection via WiFi probes + BLE advertisements. MAC randomization-aware fingerprinting. RSSI-based proximity zones with person clustering.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🛡️</span>
+          <h3>Jam Detector</h3>
+          <span class="tag tag-sigint">SIGINT</span>
+        </div>
+        <div class="module-desc">Multi-band interference detection: WiFi deauth floods, SubGHz carrier jamming (CC1101), and 2.4GHz broadband disruption (NRF24). Full spectrum mode.</div>
+      </div>
+
+      <!-- SIGINT Modules -->
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🔑</span>
+          <h3>EAPOL Capture</h3>
+          <span class="tag tag-sigint">SIGINT</span>
+        </div>
+        <div class="module-desc">WPA/WPA2 four-way handshake capture with PMKID extraction. Promiscuous mode packet analysis. Saves in hashcat-compatible format to SD.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🎭</span>
+          <h3>Karma Attack</h3>
+          <span class="tag tag-sigint">SIGINT</span>
+        </div>
+        <div class="module-desc">Captures probe requests from nearby devices, showing what networks they're looking for. Selective evil twin with captive portal for credential capture testing.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🗺️</span>
+          <h3>Wardriving</h3>
+          <span class="tag tag-sigint">SIGINT</span>
+        </div>
+        <div class="module-desc">GPS-tagged AP scanning with WiGLE CSV export. Logs BSSID, SSID, encryption, channel, RSSI, and coordinates. Highlights open and WEP networks.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🏭</span>
+          <h3>IoT Recon</h3>
+          <span class="tag tag-sigint">SIGINT</span>
+        </div>
+        <div class="module-desc">Subnet scanner with IoT-focused service fingerprinting. Detects cameras, MQTT brokers, Modbus PLCs, and DVRs. Default credential database included.</div>
+      </div>
+
+      <!-- SubGHz / RF -->
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">📻</span>
+          <h3>SubGHz Analyzer</h3>
+          <span class="tag tag-subghz">SubGHz</span>
+        </div>
+        <div class="module-desc">CC1101-based signal analysis from 300-928MHz. Frequency scanning, signal strength monitoring, and modulation detection for garage doors, keyfobs, and weather stations.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🛰️</span>
+          <h3>NRF24 Scanner</h3>
+          <span class="tag tag-rf">2.4GHz</span>
+        </div>
+        <div class="module-desc">80-channel 2.4GHz spectrum analyzer using NRF24L01+PA+LNA. Visualize channel congestion, detect active transmitters, and identify non-WiFi 2.4GHz devices.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">💎</span>
+          <h3>RFID/NFC Tools</h3>
+          <span class="tag tag-nfc">NFC</span>
+        </div>
+        <div class="module-desc">PN532 SPI interface for MIFARE Classic scanning, reading, key testing, and NTAG215 support. Badge cloning for physical security assessments.</div>
+      </div>
+
+      <!-- Utility -->
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">🔧</span>
+          <h3>Hardware Detect</h3>
+          <span class="tag tag-recon">Util</span>
+        </div>
+        <div class="module-desc">Auto-detect connected peripherals: CC1101, NRF24L01, GPS (NEO-6M/7M), PCF8574 I/O expander, PN532 NFC, SD card. Pin configuration report.</div>
+      </div>
+
+      <div class="module-card">
+        <div class="module-header">
+          <span class="module-icon">📊</span>
+          <h3>GPS Dashboard</h3>
+          <span class="tag tag-recon">Util</span>
+        </div>
+        <div class="module-desc">NMEA parser with satellite count, fix quality, coordinates, altitude, speed, and heading. Checksum-validated with cold/warm start indicators.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ HARDWARE MATRIX ═══ -->
+  <div class="hardware-section">
+    <h2>HARDWARE COMPARISON</h2>
+    <table class="hw-table">
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>ESP32-DIV V1.x</th>
+          <th>ESP32-DIV V2.0</th>
+          <th>CYD</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>MCU</td>
+          <td>ESP32-WROOM-32 (4MB)</td>
+          <td>ESP32-D0WD-V3 (16MB)</td>
+          <td>ESP32-WROOM-32 (4MB)</td>
+        </tr>
+        <tr>
+          <td>Display</td>
+          <td>2.8" ILI9341 SPI</td>
+          <td>2.8" ILI9341 Touchscreen</td>
+          <td>2.8" ILI9341 Resistive Touch</td>
+        </tr>
+        <tr>
+          <td>NRF24L01</td>
+          <td><span class="hw-status hw-builtin"></span>1x (SPI CS=5)</td>
+          <td><span class="hw-status hw-builtin"></span>3x (SPI)</td>
+          <td><span class="hw-status hw-optional"></span>External add-on</td>
+        </tr>
+        <tr>
+          <td>CC1101</td>
+          <td><span class="hw-status hw-builtin"></span>1x (SPI CS=15)</td>
+          <td><span class="hw-status hw-builtin"></span>1x (SPI)</td>
+          <td><span class="hw-status hw-optional"></span>External add-on</td>
+        </tr>
+        <tr>
+          <td>SD Card</td>
+          <td><span class="hw-status hw-optional"></span>External</td>
+          <td><span class="hw-status hw-builtin"></span>Built-in TF slot</td>
+          <td><span class="hw-status hw-builtin"></span>Built-in TF slot</td>
+        </tr>
+        <tr>
+          <td>RGB LEDs</td>
+          <td>—</td>
+          <td><span class="hw-status hw-builtin"></span>4x WS2812B</td>
+          <td><span class="hw-status hw-builtin"></span>1x RGB LED</td>
+        </tr>
+        <tr>
+          <td>Buzzer</td>
+          <td>—</td>
+          <td><span class="hw-status hw-builtin"></span>Integrated</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Power Mgmt</td>
+          <td>Direct USB</td>
+          <td><span class="hw-status hw-builtin"></span>IP5306 IC (battery)</td>
+          <td>Direct USB</td>
+        </tr>
+        <tr>
+          <td>USB</td>
+          <td>CH340/CP2102 Serial</td>
+          <td>CP210x Serial</td>
+          <td>CH340 Serial</td>
+        </tr>
+        <tr>
+          <td>Connectors</td>
+          <td>Pin headers</td>
+          <td>Pogo-pin stack</td>
+          <td>JST / Pin headers</td>
+        </tr>
+        <tr>
+          <td>PN532 NFC</td>
+          <td><span class="hw-status hw-optional"></span>External (SPI CS=4)</td>
+          <td><span class="hw-status hw-optional"></span>External (SPI)</td>
+          <td><span class="hw-status hw-optional"></span>External</td>
+        </tr>
+        <tr>
+          <td>GPS</td>
+          <td><span class="hw-status hw-optional"></span>External (UART)</td>
+          <td><span class="hw-status hw-optional"></span>External (UART)</td>
+          <td><span class="hw-status hw-optional"></span>External</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ CREDITS ═══ -->
+  <div class="credits">
+    <h3>STANDING ON THE SHOULDERS OF GIANTS</h3>
+    <div class="credits-grid">
+      <div class="credit-item">
+        <a href="https://github.com/cifertech" target="_blank">CiferTech</a>
+        <span class="credit-role">ESP32-DIV creator — original hardware &amp; software</span>
+        <span class="credit-links">
+          <a href="https://github.com/cifertech/ESP32-DIV" target="_blank">GitHub</a> ·
+          <a href="https://cifertech.net/" target="_blank">Blog</a>
+        </span>
+      </div>
+      <div class="credit-item">
+        <a href="https://github.com/JesseCHale/HaleHound-CYD" target="_blank">JesseCHale — HaleHound-CYD</a>
+        <span class="credit-role">Feature inspiration &amp; CYD pioneering</span>
+      </div>
+      <div class="credit-item">
+        <a href="https://github.com/RadDad87" target="_blank">RadDad87</a>
+        <span class="credit-role">C3RB3RU5 firmware — 62 original modules, UI overhaul, branding</span>
+      </div>
+    </div>
+  </div>
 
 </div>
 
-<script>
-  // ---- Web Serial check ----
-  if (!("serial" in navigator)) {
-    document.getElementById("unsupported").classList.add("show");
-    document.getElementById("statusDot").className = "status-dot red";
-    document.getElementById("statusText").innerHTML = '<strong style="color:var(--red)">UNSUPPORTED</strong> — use Chrome or Edge desktop';
-  }
-
-  // ---- Board ID toggle ----
-  function toggleBoardId() {
-    const c = document.getElementById("boardContent");
-    const t = document.getElementById("boardToggle");
-    const open = c.classList.toggle("open");
-    t.textContent = open ? "hide" : "show";
-  }
-
-  // ---- Release notes toggle ----
-  function toggleRelease(fw) {
-    const body = document.getElementById(fw + "-notes-body");
-    body.classList.toggle("open");
-  }
-
-  // ---- Matrix rain background ----
-  (function() {
-    const canvas = document.getElementById("matrix");
-    const ctx = canvas.getContext("2d");
-    let w, h, cols, drops;
-    const chars = "01アイウエオカキクケコサシスセソ";
-
-    function resize() {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
-      cols = Math.floor(w / 18);
-      drops = Array(cols).fill(0).map(() => Math.random() * -100);
-    }
-    resize();
-    window.addEventListener("resize", resize);
-
-    function draw() {
-      ctx.fillStyle = "rgba(6,6,11,0.15)";
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "#00ff88";
-      ctx.font = "14px monospace";
-      for (let i = 0; i < cols; i++) {
-        if (drops[i] * 18 > h && Math.random() > 0.975) drops[i] = 0;
-        const ch = chars[Math.floor(Math.random() * chars.length)];
-        ctx.fillText(ch, i * 18, drops[i] * 18);
-        drops[i]++;
-      }
-      requestAnimationFrame(draw);
-    }
-    draw();
-  })();
-
-  // ---- GitHub API: auto-fetch latest releases ----
-  const REPOS = {
-    cifertech: {
-      api: "https://api.github.com/repos/cifertech/ESP32-DIV/releases/latest",
-      currentVersion: "v1.5.0",
-      versionEl: "cifertech-version",
-      latestEl: "cifertech-latest",
-      notesEl: "cifertech-notes",
-      notesBodyEl: "cifertech-notes-body"
-    },
-    halehound: {
-      api: "https://api.github.com/repos/JesseCHale/HaleHound-CYD/releases/latest",
-      currentVersion: "v3.5.5",
-      versionEl: "halehound-version",
-      latestEl: "halehound-latest",
-      notesEl: "halehound-notes",
-      notesBodyEl: "halehound-notes-body"
-    }
-  };
-
-  async function checkReleases() {
-    for (const [key, repo] of Object.entries(REPOS)) {
-      try {
-        const res = await fetch(repo.api);
-        if (!res.ok) continue;
-        const data = await res.json();
-        const latest = data.tag_name || "";
-
-        // Show release notes
-        const notesDiv = document.getElementById(repo.notesEl);
-        const notesBody = document.getElementById(repo.notesBodyEl);
-        if (data.body) {
-          notesDiv.classList.add("loaded");
-          // Simple markdown-ish rendering
-          let body = data.body
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/^### (.+)$/gm, '<strong style="color:var(--text-bright)">$1</strong>')
-            .replace(/^## (.+)$/gm, '<strong style="color:var(--accent)">$1</strong>')
-            .replace(/^- (.+)$/gm, '<span style="color:var(--accent)">></span> $1')
-            .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text-bright)">$1</strong>')
-            .replace(/`(.+?)`/g, '<code style="color:var(--orange);background:#1a1510;padding:0.1rem 0.3rem;border-radius:3px">$1</code>')
-            .replace(/\n/g, '<br>');
-          notesBody.innerHTML = `<div style="margin-bottom:0.5rem;color:var(--accent)">// ${data.tag_name} — ${new Date(data.published_at).toLocaleDateString()}</div>${body}`;
-        }
-
-        // Compare versions — show update badge if newer
-        const clean = v => v.replace(/^v/i, '').split('.').map(Number);
-        const cur = clean(repo.currentVersion);
-        const lat = clean(latest);
-        let newer = false;
-        for (let i = 0; i < 3; i++) {
-          if ((lat[i]||0) > (cur[i]||0)) { newer = true; break; }
-          if ((lat[i]||0) < (cur[i]||0)) break;
-        }
-
-        if (newer) {
-          const badge = document.getElementById(repo.latestEl);
-          badge.textContent = `${latest} available`;
-          badge.classList.add("show");
-          // Update status bar
-          document.getElementById("statusDot").className = "status-dot yellow";
-          document.getElementById("statusText").innerHTML =
-            `<strong style="color:var(--orange)">UPDATE</strong> — newer firmware available, re-flash to upgrade`;
-        }
-      } catch(e) {
-        // GitHub API rate-limited or unavailable — fail silently
-        const notesBody = document.getElementById(repo.notesBodyEl);
-        notesBody.innerHTML = '<span style="color:#555">// could not reach GitHub API</span>';
-      }
-    }
-  }
-
-  // Fetch repo stars
-  async function fetchStars() {
-    try {
-      const res = await fetch("https://api.github.com/repos/RadDad87/esp32-div-flasher");
-      if (!res.ok) return;
-      const data = await res.json();
-      document.getElementById("repoStars").textContent = data.stargazers_count || 0;
-    } catch(e) {}
-  }
-
-  // Run on load
-  checkReleases();
-  fetchStars();
-</script>
+<footer>
+  C3RB3RU5 firmware &copy; 2024-2026 RadDad87 &mdash;
+  Built on <a href="https://github.com/cifertech/ESP32-DIV">ESP32-DIV</a> by <a href="https://cifertech.net/">CiferTech</a> (MIT) &mdash;
+  For authorized security testing only.
+</footer>
 
 </body>
 </html>

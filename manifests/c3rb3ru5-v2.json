@@ -1,0 +1,17 @@
+{
+  "name": "C3RB3RU5 — ESP32-DIV V2",
+  "version": "2.0.0-alpha",
+  "home_assistant_domain": "",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "bins/v2/bootloader.bin", "offset": 4096 },
+        { "path": "bins/v2/partitions.bin", "offset": 32768 },
+        { "path": "bins/v2/boot_app0.bin", "offset": 57344 },
+        { "path": "bins/v2/c3rb3ru5-v2.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}
